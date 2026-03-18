@@ -226,17 +226,19 @@
               cpfCnpjProprietario: cpf
             },
             success: function(resp){
+              console.log('[Omega] resposta verificar:', JSON.stringify(resp));
               if(resp && resp.success === true){
-                // Portal processa internamente — dispara o mesmo evento do botao Verificar
-                try {
-                  unsafeWindow.antt.rntrc.arrendamento.VerificarVeiculo(jq('#verificar'));
-                } catch(e){}
                 // Habilita campos de data diretamente
                 var di = document.getElementById('DataInicio');
                 var df = document.getElementById('DataFim');
+                var ca = document.getElementById('CPFCNPJArrendatario');
                 if(di) di.removeAttribute('disabled');
                 if(df) df.removeAttribute('disabled');
-                U.box(st,true,'Veiculo verificado! Placa <b>'+placa+'</b> OK');
+                if(ca) ca.removeAttribute('disabled');
+                // Dispara change no select do CPF para o portal atualizar os campos dependentes
+                var sel = document.getElementById('CPFCNPJArrendanteTransportador');
+                if(sel) jq(sel).trigger('change');
+                U.box(st,true,'Veiculo verificado! Placa <b>'+placa+'</b> OK — preencha os campos restantes.');
               } else {
                 var msg = (resp && resp.ErrorMessage) ? resp.ErrorMessage : 'Veiculo nao encontrado ou nao pertence ao transportador.';
                 U.box(st,false,'Erro: '+msg);
