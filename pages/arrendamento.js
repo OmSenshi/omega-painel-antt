@@ -32,7 +32,7 @@
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
       +'<div>'
         +'<label style="font-size:11px;color:#888">Placa</label>'
-        +'<input id="antt-placa-input" placeholder="ABC1234 ou ABC-1234" maxlength="8" style="width:100%;margin-top:4px;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;text-transform:uppercase">'
+        +'<input id="antt-placa-input" placeholder="ABC1234 ou ABC1D23" maxlength="8" style="width:100%;margin-top:4px;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;text-transform:uppercase">'
         +'<div id="antt-placa-preview" style="margin-top:4px;font-size:11px;color:#666;min-height:14px"></div>'
       +'</div>'
       +'<div>'
@@ -54,28 +54,31 @@
     +'<div id="antt-check-status" style="font-size:11px;min-height:0;border-radius:8px;padding:0"></div>'
   );
 
-  // ── Formatar placa ────────────────────────────────────────────────────
-  // Mercosul: 3 letras + 1 num + 1 letra + 2 nums  → sem traco (ABC1D23)
-  // Padrao:   3 letras + 4 nums                     → com traco (ABC-1234)
-  function formatarPlaca(raw) {
+  // ── Validar placa (sem traço, 7 chars) ────────────────────────────────
+  function validarPlaca(raw) {
     var p = raw.replace(/[^A-Z0-9]/g,'').toUpperCase();
     if(p.length !== 7) return null;
-    var isMercosul = /^[A-Z]{3}[0-9][A-Z][0-9]{2}$/.test(p);
-    var isPadrao   = /^[A-Z]{3}[0-9]{4}$/.test(p);
-    if(isMercosul) return p;           // ABC1D23 — sem traco
-    if(isPadrao)   return p.substring(0,3)+'-'+p.substring(3); // ABC-1234
+    if(/^[A-Z]{3}[0-9]{4}$/.test(p)) return p; // padrao
+    if(/^[A-Z]{3}[0-9][A-Z][0-9]{2}$/.test(p)) return p; // mercosul
     return null;
   }
 
   // ── Preview placa ─────────────────────────────────────────────────────
   var placaInp = document.getElementById('antt-placa-input');
   placaInp.addEventListener('input', function(){
-    var p  = document.getElementById('antt-placa-preview');
-    var fmt = formatarPlaca(this.value);
-    if(fmt) p.innerHTML = '<span style="color:green">'+fmt+'</span>';
-    else if(this.value.replace(/[^A-Z0-9]/gi,'').length > 0)
-      p.innerHTML = '<span style="color:orange">Placa invalida</span>';
-    else p.textContent = '';
+    var p   = document.getElementById('antt-placa-preview');
+    var raw = this.value.replace(/[^A-Z0-9]/gi,'').toUpperCase();
+    var val = validarPlaca(raw);
+    if(val) {
+      var display = /^[A-Z]{3}[0-9]{4}$/.test(val)
+        ? val.substring(0,3)+'-'+val.substring(3)
+        : val;
+      p.innerHTML = '<span style="color:green">'+display+'</span>';
+    } else if(raw.length > 0) {
+      p.innerHTML = '<span style="color:orange">'+raw.length+'/7 caracteres</span>';
+    } else {
+      p.textContent = '';
+    }
   });
 
   // ── CPF/CNPJ preview ──────────────────────────────────────────────────
@@ -130,14 +133,44 @@
     document.getElementById('antt-nome-preview').textContent='';
   });
 
+  // ── Digitar caractere a caractere com delay ───────────────────────────
+  // O portal insere o traco automaticamente no keyup do 4o caractere
+  // Precisamos de delay real entre cada tecla para ele processar
+  function digitarComDelay(el, chars, index, callback) {
+    if(index >= chars.length) {
+      // Fim da digitacao — dispara change e blur
+      el.dispatchEvent(new Event('change', {bubbles:true}));
+      el.dispatchEvent(new Event('blur',   {bubbles:true}));
+      if(callback) callback();
+      return;
+    }
+    var ch = chars[index];
+    el.dispatchEvent(new KeyboardEvent('keydown',  {bubbles:true, cancelable:true, key:ch}));
+    el.dispatchEvent(new KeyboardEvent('keypress', {bubbles:true, cancelable:true, key:ch}));
+    // Deixa o portal processar o keydown/keypress antes de atualizar o valor
+    setTimeout(function(){
+      // So adiciona o char se o portal nao adicionou algo (ex: o traco)
+      var valorAntes = el.value;
+      if(el.value.replace(/[^A-Z0-9]/gi,'').length === index) {
+        el.value = el.value + ch;
+      }
+      el.dispatchEvent(new Event('input', {bubbles:true}));
+      el.dispatchEvent(new KeyboardEvent('keyup', {bubbles:true, cancelable:true, key:ch}));
+      // Proximo caractere apos 60ms
+      setTimeout(function(){
+        digitarComDelay(el, chars, index+1, callback);
+      }, 60);
+    }, 30);
+  }
+
   // ── Preencher Placa + Renavam + Verificar ─────────────────────────────
   document.getElementById('antt-veiculo-btn').addEventListener('click',function(){
     var st = document.getElementById('antt-veiculo-status');
-    var placaRaw   = document.getElementById('antt-placa-input').value;
+    var placaRaw   = document.getElementById('antt-placa-input').value.replace(/[^A-Z0-9]/gi,'').toUpperCase();
     var renavamRaw = document.getElementById('antt-renavam-input').value.trim();
-    var placaFmt   = formatarPlaca(placaRaw);
+    var placaVal   = validarPlaca(placaRaw);
 
-    if(!placaFmt) return U.box(st,false,'Placa invalida. Use AAA-0000 ou AAA0A00.');
+    if(!placaVal) return U.box(st,false,'Placa invalida. Use AAA0000 ou AAA0A00 (7 caracteres).');
     if(!renavamRaw) return U.box(st,false,'Preencha o Renavam.');
 
     var campoPlaca   = document.getElementById('Placa');
@@ -147,30 +180,31 @@
     if(!campoPlaca||!campoRenavam) return U.box(st,false,'Campos nao encontrados na pagina.');
     if(!btnVerificar) return U.box(st,false,'Botao Verificar nao encontrado.');
 
-    // Simula digitacao caractere a caractere para respeitar a mascara do portal
-    function simularDigitacao(el, valor) {
-      el.removeAttribute('disabled');
-      el.focus();
-      el.value = '';
-      el.dispatchEvent(new Event('focus', {bubbles:true}));
-      for(var i=0; i<valor.length; i++) {
-        el.value += valor[i];
-        el.dispatchEvent(new KeyboardEvent('keydown',  {bubbles:true, key: valor[i]}));
-        el.dispatchEvent(new KeyboardEvent('keypress', {bubbles:true, key: valor[i]}));
-        el.dispatchEvent(new Event('input',  {bubbles:true}));
-        el.dispatchEvent(new KeyboardEvent('keyup',    {bubbles:true, key: valor[i]}));
-      }
-      el.dispatchEvent(new Event('change', {bubbles:true}));
-      el.dispatchEvent(new Event('blur',   {bubbles:true}));
-    }
+    U.box(st,true,'Preenchendo placa...');
 
-    simularDigitacao(campoPlaca,   placaFmt);
-    simularDigitacao(campoRenavam, renavamRaw);
+    // Limpa e foca o campo antes de digitar
+    campoPlaca.removeAttribute('disabled');
+    campoPlaca.value = '';
+    campoPlaca.focus();
+    campoPlaca.dispatchEvent(new Event('focus', {bubbles:true}));
 
-    setTimeout(function(){
-      btnVerificar.click();
-      U.box(st,true,'Placa <b>'+placaFmt+'</b> e Renavam preenchidos!<br><span style="font-size:11px;color:#555">Aguardando verificacao...</span>');
-    },300);
+    // Digita a placa caractere a caractere (portal adiciona o traco sozinho)
+    digitarComDelay(campoPlaca, placaVal.split(''), 0, function(){
+
+      // Apos placa, preenche Renavam diretamente (sem mascara)
+      campoRenavam.removeAttribute('disabled');
+      campoRenavam.value = renavamRaw;
+      campoRenavam.dispatchEvent(new Event('input',  {bubbles:true}));
+      campoRenavam.dispatchEvent(new Event('change', {bubbles:true}));
+      campoRenavam.dispatchEvent(new Event('blur',   {bubbles:true}));
+
+      // Aguarda 400ms e clica em Verificar
+      setTimeout(function(){
+        var placaFinal = campoPlaca.value;
+        btnVerificar.click();
+        U.box(st,true,'Placa <b>'+placaFinal+'</b> e Renavam preenchidos!<br><span style="font-size:11px;color:#555">Aguardando verificacao do portal...</span>');
+      }, 400);
+    });
   });
 
   // ── Preencher Data ────────────────────────────────────────────────────
