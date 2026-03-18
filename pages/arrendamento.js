@@ -227,30 +227,23 @@
             },
             success: function(resp){
               if(resp && resp.success === true){
-                // Preenche os campos que o portal preencheria apos verificar
-                if(resp.cpfCnpjArrendatario){
-                  var ca = document.getElementById('CPFCNPJArrendatario');
-                  if(ca){ ca.removeAttribute('disabled'); ca.value=resp.cpfCnpjArrendatario; ca.dispatchEvent(new Event('change',{bubbles:true})); }
-                }
-                if(resp.nomeArrendatario){
-                  var na = document.getElementById('NomeArrendatario');
-                  if(na) na.value = resp.nomeArrendatario;
-                  var nai = document.getElementById('NomeArrendatarioInput');
-                  if(nai){ nai.removeAttribute('disabled'); nai.value=resp.nomeArrendatario; }
-                }
-                // Habilita os campos de data
+                // Portal processa internamente — dispara o mesmo evento do botao Verificar
+                try {
+                  unsafeWindow.antt.rntrc.arrendamento.VerificarVeiculo(jq('#verificar'));
+                } catch(e){}
+                // Habilita campos de data diretamente
                 var di = document.getElementById('DataInicio');
                 var df = document.getElementById('DataFim');
                 if(di) di.removeAttribute('disabled');
                 if(df) df.removeAttribute('disabled');
                 U.box(st,true,'Veiculo verificado! Placa <b>'+placa+'</b> OK');
               } else {
-                var msg = (resp && resp.errorMessage) ? resp.errorMessage : 'Resposta inesperada do portal.';
+                var msg = (resp && resp.ErrorMessage) ? resp.ErrorMessage : 'Veiculo nao encontrado ou nao pertence ao transportador.';
                 U.box(st,false,'Erro: '+msg);
               }
             },
-            fail: function(err){
-              U.box(st,false,'Falha na requisicao: '+JSON.stringify(err));
+            error: function(xhr,status,err){
+              U.box(st,false,'Falha na requisicao: '+status+' — '+err);
             }
           });
           U.box(st,true,'Verificando veiculo...');
