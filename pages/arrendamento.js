@@ -110,8 +110,24 @@
     var r1=U.substituirTudo(af,nf);
     var r2=U.substituirTudo(ap,raw);
     var tot=r1.total+r2.total;
-    if(tot===0)U.box(st,false,'Nenhuma ocorrencia de <b>'+af+'</b>.');
-    else U.box(st,true,'CPF/CNPJ substituido! <b>'+nf+'</b> ('+tot+' trocas)');
+    if(tot===0){U.box(st,false,'Nenhuma ocorrencia de <b>'+af+'</b>.');return;}
+
+    // Seleciona o novo CPF/CNPJ no select automaticamente
+    var sel=document.getElementById('CPFCNPJArrendanteTransportador');
+    var selecionou=false;
+    if(sel){
+      for(var i=0;i<sel.options.length;i++){
+        if(sel.options[i].value===raw){
+          sel.selectedIndex=i;
+          sel.dispatchEvent(new Event('change',{bubbles:true}));
+          if(jq)jq(sel).trigger('change');
+          selecionou=true;
+          break;
+        }
+      }
+    }
+
+    U.box(st,true,'CPF/CNPJ substituido! <b>'+nf+'</b> ('+tot+' trocas)'+(selecionou?' — selecionado automaticamente':' — selecione manualmente no campo'));
     inp.value='';
     document.getElementById('antt-preview').textContent='';
   });
