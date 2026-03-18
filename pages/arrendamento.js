@@ -211,6 +211,11 @@
       // Chama a funcao de verificar do portal diretamente
       setTimeout(function(){
         try {
+          var dbgPlaca=document.getElementById('Placa').value;
+          var dbgRenavam=document.getElementById('Renavam').value;
+          var dbgCpfSel=document.getElementById('CPFCNPJArrendanteTransportador').value;
+          var dbgCpfHid=document.getElementById('CPFCNPJArrendante').value;
+          console.log('[Omega] Placa:',dbgPlaca,'| Renavam:',dbgRenavam,'| CPF select:',dbgCpfSel,'| CPF hidden:',dbgCpfHid);
           unsafeWindow.antt.rntrc.arrendamento.VerificarVeiculo(jq('#verificar'));
           U.box(st,true,'Placa <b>'+placaFinal+'</b> e Renavam preenchidos!<br><span style="font-size:11px;color:#555">Aguardando verificacao do portal...</span>');
         } catch(e) {
