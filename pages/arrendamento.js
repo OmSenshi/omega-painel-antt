@@ -4,66 +4,101 @@
   var jq  = window.OmegaJQ;
   var mom = window.OmegaMom;
 
-  // ── Injeta o HTML das secoes ──────────────────────────────────────────
   U.addSecao(''
-    // CPF/CNPJ
-    +'<label style="font-size:12px;color:#555">CPF ou CNPJ:</label>'
-    +'<input id="antt-cpf-input" placeholder="000.000.000-00 ou 00.000.000/0000-00" style="width:100%;margin-top:6px;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box">'
-    +'<div id="antt-preview" style="margin-top:8px;font-size:12px;color:#666;min-height:16px"></div>'
-    +'<button id="antt-btn" style="width:100%;margin-top:10px;padding:10px;background:#1a73e8;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-weight:bold">Substituir na Pagina</button>'
-    +'<div id="antt-status" style="margin-top:10px;font-size:12px;min-height:16px;border-radius:8px;padding:0"></div>'
-    // Nome
-    +'<hr style="margin:14px 0;border:none;border-top:1px solid #eee">'
-    +'<label style="font-size:12px;color:#555">Nome do Arrendante:</label>'
-    +'<input id="antt-nome-input" placeholder="Ex: Joao da Silva" style="width:100%;margin-top:6px;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box">'
-    +'<div id="antt-nome-preview" style="margin-top:6px;font-size:12px;color:#666;min-height:16px"></div>'
-    +'<button id="antt-nome-btn" style="width:100%;margin-top:10px;padding:10px;background:#1a73e8;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-weight:bold">Substituir Nome</button>'
-    +'<div id="antt-nome-status" style="margin-top:10px;font-size:12px;min-height:16px;border-radius:8px;padding:0"></div>'
-    // Data
-    +'<hr style="margin:14px 0;border:none;border-top:1px solid #eee">'
-    +'<button id="antt-data-btn" style="width:100%;padding:10px;background:#34a853;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-weight:bold">Preencher Data</button>'
-    +'<div id="antt-data-status" style="margin-top:10px;font-size:12px;min-height:16px;border-radius:8px;padding:0"></div>'
-    // Declaracoes
-    +'<hr style="margin:14px 0;border:none;border-top:1px solid #eee">'
-    +'<button id="antt-check-btn" style="width:100%;padding:10px;background:#6f42c1;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-weight:bold">Marcar Declaracoes</button>'
-    +'<div id="antt-check-status" style="margin-top:10px;font-size:12px;min-height:16px;border-radius:8px;padding:0"></div>'
+    // ── Secao 1: Dados do Transportador ──────────────────────────────
+    +'<div style="font-size:11px;font-weight:bold;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Transportador</div>'
+
+    // CPF/CNPJ + Nome lado a lado em labels
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+      +'<div>'
+        +'<label style="font-size:11px;color:#888">CPF / CNPJ</label>'
+        +'<input id="antt-cpf-input" placeholder="000.000.000-00" style="width:100%;margin-top:4px;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box">'
+        +'<div id="antt-preview" style="margin-top:4px;font-size:11px;color:#666;min-height:14px"></div>'
+      +'</div>'
+      +'<div>'
+        +'<label style="font-size:11px;color:#888">Nome</label>'
+        +'<input id="antt-nome-input" placeholder="Nome completo" style="width:100%;margin-top:4px;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box">'
+        +'<div id="antt-nome-preview" style="margin-top:4px;font-size:11px;color:#666;min-height:14px"></div>'
+      +'</div>'
+    +'</div>'
+
+    // Botoes CPF e Nome lado a lado
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">'
+      +'<button id="antt-btn" style="padding:9px;background:#1a73e8;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:bold">Substituir CPF</button>'
+      +'<button id="antt-nome-btn" style="padding:9px;background:#1a73e8;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:bold">Substituir Nome</button>'
+    +'</div>'
+
+    // Status CPF e Nome
+    +'<div id="antt-status" style="font-size:11px;min-height:0;border-radius:8px;padding:0"></div>'
+    +'<div id="antt-nome-status" style="font-size:11px;min-height:0;border-radius:8px;padding:0"></div>'
+
+    // ── Secao 2: Veiculo ──────────────────────────────────────────────
+    +'<hr style="margin:12px 0;border:none;border-top:1px solid #eee">'
+    +'<div style="font-size:11px;font-weight:bold;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Veiculo</div>'
+
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+      +'<div>'
+        +'<label style="font-size:11px;color:#888">Placa</label>'
+        +'<input id="antt-placa-input" placeholder="AAA-0000" maxlength="8" style="width:100%;margin-top:4px;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;text-transform:uppercase">'
+      +'</div>'
+      +'<div>'
+        +'<label style="font-size:11px;color:#888">Renavam</label>'
+        +'<input id="antt-renavam-input" placeholder="00000000000" maxlength="15" style="width:100%;margin-top:4px;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box">'
+      +'</div>'
+    +'</div>'
+
+    +'<button id="antt-veiculo-btn" style="width:100%;margin-top:8px;padding:9px;background:#1a73e8;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:bold">Preencher e Verificar</button>'
+    +'<div id="antt-veiculo-status" style="font-size:11px;min-height:0;border-radius:8px;padding:0"></div>'
+
+    // ── Secao 3: Contrato ─────────────────────────────────────────────
+    +'<hr style="margin:12px 0;border:none;border-top:1px solid #eee">'
+    +'<div style="font-size:11px;font-weight:bold;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Contrato</div>'
+
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+      +'<button id="antt-data-btn" style="padding:9px;background:#34a853;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:bold">Preencher Data</button>'
+      +'<button id="antt-check-btn" style="padding:9px;background:#6f42c1;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:bold">Marcar Declaracoes</button>'
+    +'</div>'
+    +'<div id="antt-data-status" style="font-size:11px;min-height:0;border-radius:8px;padding:0"></div>'
+    +'<div id="antt-check-status" style="font-size:11px;min-height:0;border-radius:8px;padding:0"></div>'
   );
 
-  // ── CPF/CNPJ ──────────────────────────────────────────────────────────
+  // ── CPF/CNPJ preview ──────────────────────────────────────────────────
   var inp=document.getElementById('antt-cpf-input');
   inp.addEventListener('input',function(){
     var r=this.value.replace(/\D/g,''),p=document.getElementById('antt-preview');
-    if(r.length===11)p.innerHTML='<span style="color:green">CPF: <b>'+U.fCPF(r)+'</b></span>';
-    else if(r.length===14)p.innerHTML='<span style="color:green">CNPJ: <b>'+U.fCNPJ(r)+'</b></span>';
+    if(r.length===11)p.innerHTML='<span style="color:green">'+U.fCPF(r)+'</span>';
+    else if(r.length===14)p.innerHTML='<span style="color:green">'+U.fCNPJ(r)+'</span>';
     else if(r.length>0)p.innerHTML='<span style="color:orange">'+r.length+' digitos</span>';
     else p.textContent='';
   });
 
+  // ── Nome preview ──────────────────────────────────────────────────────
+  var ni=document.getElementById('antt-nome-input');
+  ni.addEventListener('input',function(){
+    var p=document.getElementById('antt-nome-preview'),v=this.value.trim();
+    if(v)p.innerHTML='<span style="color:green">'+v.toUpperCase()+'</span>';
+    else p.textContent='';
+  });
+
+  // ── Substituir CPF/CNPJ ───────────────────────────────────────────────
   document.getElementById('antt-btn').addEventListener('click',function(){
     var st=document.getElementById('antt-status');
     var raw=inp.value.replace(/\D/g,'');
     if(!raw)return U.box(st,false,'Nenhum valor digitado.');
     if(raw.length!==11&&raw.length!==14)return U.box(st,false,raw.length+' digitos. CPF=11, CNPJ=14.');
-    var nf=U.fAuto(raw), ap=U.getDoc();
-    if(!ap)return U.box(st,false,'CPF/CNPJ nao encontrado na pagina.');
+    var nf=U.fAuto(raw),ap=U.getDoc();
+    if(!ap)return U.box(st,false,'CPF/CNPJ nao encontrado.');
     var af=U.fAuto(ap);
     var r1=U.substituirTudo(af,nf);
     var r2=U.substituirTudo(ap,raw);
     var tot=r1.total+r2.total;
-    if(tot===0)U.box(st,false,'Nenhuma ocorrencia de <b>'+af+'</b> encontrada.');
-    else U.box(st,true,'Substituido! <b>'+nf+'</b><br><span style="color:#555;font-size:11px">Total: '+tot+' substituicoes</span>');
+    if(tot===0)U.box(st,false,'Nenhuma ocorrencia de <b>'+af+'</b>.');
+    else U.box(st,true,'CPF/CNPJ substituido! <b>'+nf+'</b> ('+tot+' trocas)');
     inp.value='';
     document.getElementById('antt-preview').textContent='';
   });
 
-  // ── Nome ──────────────────────────────────────────────────────────────
-  var ni=document.getElementById('antt-nome-input');
-  ni.addEventListener('input',function(){
-    var p=document.getElementById('antt-nome-preview'),v=this.value.trim();
-    if(v)p.innerHTML='<span style="color:green">Sera: <b>'+v.toUpperCase()+'</b></span>';
-    else p.textContent='';
-  });
-
+  // ── Substituir Nome ───────────────────────────────────────────────────
   document.getElementById('antt-nome-btn').addEventListener('click',function(){
     var st=document.getElementById('antt-nome-status');
     var nn=ni.value.trim().toUpperCase();
@@ -74,12 +109,45 @@
     var cv=document.getElementById('NomeArrendanteInput');
     if(cv){cv.removeAttribute('disabled');cv.value=nn;cv.setAttribute('disabled','disabled');}
     if(res.total===0&&!cv)U.box(st,false,'Nome <b>'+an+'</b> nao encontrado.');
-    else U.box(st,true,'Nome substituido! <b>'+nn+'</b><br><span style="color:#555;font-size:11px">Total: '+res.total+' substituicoes</span>');
+    else U.box(st,true,'Nome substituido! <b>'+nn+'</b> ('+res.total+' trocas)');
     ni.value='';
     document.getElementById('antt-nome-preview').textContent='';
   });
 
-  // ── Data ──────────────────────────────────────────────────────────────
+  // ── Preencher Placa + Renavam + clicar Verificar ──────────────────────
+  document.getElementById('antt-veiculo-btn').addEventListener('click',function(){
+    var st=document.getElementById('antt-veiculo-status');
+    var placa=document.getElementById('antt-placa-input').value.trim().toUpperCase();
+    var renavam=document.getElementById('antt-renavam-input').value.trim();
+    if(!placa||!renavam)return U.box(st,false,'Preencha Placa e Renavam.');
+
+    var campoPlaca=document.getElementById('Placa');
+    var campoRenavam=document.getElementById('Renavam');
+    var btnVerificar=document.getElementById('verificar');
+
+    if(!campoPlaca||!campoRenavam)return U.box(st,false,'Campos nao encontrados na pagina.');
+    if(!btnVerificar)return U.box(st,false,'Botao Verificar nao encontrado.');
+
+    // Preenche Placa
+    campoPlaca.removeAttribute('disabled');
+    campoPlaca.value=placa;
+    campoPlaca.dispatchEvent(new Event('input',{bubbles:true}));
+    campoPlaca.dispatchEvent(new Event('change',{bubbles:true}));
+
+    // Preenche Renavam
+    campoRenavam.removeAttribute('disabled');
+    campoRenavam.value=renavam;
+    campoRenavam.dispatchEvent(new Event('input',{bubbles:true}));
+    campoRenavam.dispatchEvent(new Event('change',{bubbles:true}));
+
+    // Clica em Verificar
+    setTimeout(function(){
+      btnVerificar.click();
+      U.box(st,true,'Placa e Renavam preenchidos!<br><span style="font-size:11px;color:#555">Aguardando verificacao do portal...</span>');
+    },300);
+  });
+
+  // ── Preencher Data ────────────────────────────────────────────────────
   document.getElementById('antt-data-btn').addEventListener('click',function(){
     var ds=document.getElementById('antt-data-status');
     if(!jq||!mom)return U.box(ds,false,'jQuery ou moment.js nao encontrados.');
@@ -96,21 +164,21 @@
     setTimeout(function(){
       var vi=jq('#DataInicio').find('input').first().val();
       var vf=jq('#DataFim').find('input').first().val();
-      if(vi===di&&vf===df)U.box(ds,true,'Datas preenchidas!<br><span style="font-size:11px;color:#555">Inicio: <b>'+di+'</b> | Fim: <b>'+df+'</b></span>');
-      else if(!vi&&!vf)U.box(ds,false,'Clique em <b>Verificar</b> o veiculo primeiro.');
+      if(vi===di&&vf===df)U.box(ds,true,'Datas preenchidas! <b>'+di+'</b> ate <b>'+df+'</b>');
+      else if(!vi&&!vf)U.box(ds,false,'Clique em <b>Verificar</b> primeiro.');
       else U.box(ds,false,'Parcial — Inicio: <b>'+(vi||'vazio')+'</b> | Fim: <b>'+(vf||'vazio')+'</b>');
     },400);
   });
 
-  // ── Declaracoes ───────────────────────────────────────────────────────
+  // ── Marcar Declaracoes ────────────────────────────────────────────────
   document.getElementById('antt-check-btn').addEventListener('click',function(){
     var st=document.getElementById('antt-check-status');
     var c1=document.getElementById('ExisteContrato');
     var c2=document.getElementById('InformacoesVerdadeiras');
-    if(!c1||!c2)return U.box(st,false,'Checkboxes nao encontrados na pagina.');
+    if(!c1||!c2)return U.box(st,false,'Checkboxes nao encontrados.');
     function marcar(cb){cb.checked=true;cb.dispatchEvent(new Event('change',{bubbles:true}));cb.dispatchEvent(new Event('click',{bubbles:true}));}
     marcar(c1);marcar(c2);
-    if(c1.checked&&c2.checked)U.box(st,true,'Declaracoes marcadas!<br><span style="font-size:11px;color:#555">Existe Contrato: marcado | Informacoes Verdadeiras: marcado</span>');
+    if(c1.checked&&c2.checked)U.box(st,true,'Declaracoes marcadas!');
     else U.box(st,false,'Erro ao marcar os checkboxes.');
   });
 
