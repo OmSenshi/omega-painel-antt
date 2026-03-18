@@ -208,16 +208,52 @@
       campoRenavam.dispatchEvent(new Event('change', {bubbles:true}));
       campoRenavam.dispatchEvent(new Event('blur',   {bubbles:true}));
 
-      // Chama a funcao de verificar do portal diretamente
+      // Chama verificarVeiculo diretamente via AJAX igual o portal faz
       setTimeout(function(){
         try {
-          var dbgPlaca=document.getElementById('Placa').value;
-          var dbgRenavam=document.getElementById('Renavam').value;
-          var dbgCpfSel=document.getElementById('CPFCNPJArrendanteTransportador').value;
-          var dbgCpfHid=document.getElementById('CPFCNPJArrendante').value;
-          console.log('[Omega] Placa:',dbgPlaca,'| Renavam:',dbgRenavam,'| CPF select:',dbgCpfSel,'| CPF hidden:',dbgCpfHid);
-          unsafeWindow.antt.rntrc.arrendamento.VerificarVeiculo(jq('#verificar'));
-          U.box(st,true,'Placa <b>'+placaFinal+'</b> e Renavam preenchidos!<br><span style="font-size:11px;color:#555">Aguardando verificacao do portal...</span>');
+          var placa   = document.getElementById('Placa').value.toUpperCase();
+          var renavam = document.getElementById('Renavam').value;
+          var cpf     = document.getElementById('CPFCNPJArrendante').value;
+          var url     = '/ContratoArrendamento/verificarVeiculo';
+
+          jq.ajax({
+            type: 'GET',
+            url:  url,
+            cache: false,
+            data: {
+              placa:               placa,
+              renavam:             renavam,
+              cpfCnpjProprietario: cpf
+            },
+            success: function(resp){
+              if(resp && resp.success === true){
+                // Preenche os campos que o portal preencheria apos verificar
+                if(resp.cpfCnpjArrendatario){
+                  var ca = document.getElementById('CPFCNPJArrendatario');
+                  if(ca){ ca.removeAttribute('disabled'); ca.value=resp.cpfCnpjArrendatario; ca.dispatchEvent(new Event('change',{bubbles:true})); }
+                }
+                if(resp.nomeArrendatario){
+                  var na = document.getElementById('NomeArrendatario');
+                  if(na) na.value = resp.nomeArrendatario;
+                  var nai = document.getElementById('NomeArrendatarioInput');
+                  if(nai){ nai.removeAttribute('disabled'); nai.value=resp.nomeArrendatario; }
+                }
+                // Habilita os campos de data
+                var di = document.getElementById('DataInicio');
+                var df = document.getElementById('DataFim');
+                if(di) di.removeAttribute('disabled');
+                if(df) df.removeAttribute('disabled');
+                U.box(st,true,'Veiculo verificado! Placa <b>'+placa+'</b> OK');
+              } else {
+                var msg = (resp && resp.errorMessage) ? resp.errorMessage : 'Resposta inesperada do portal.';
+                U.box(st,false,'Erro: '+msg);
+              }
+            },
+            fail: function(err){
+              U.box(st,false,'Falha na requisicao: '+JSON.stringify(err));
+            }
+          });
+          U.box(st,true,'Verificando veiculo...');
         } catch(e) {
           U.box(st,false,'Erro ao verificar: '+e.message);
         }
