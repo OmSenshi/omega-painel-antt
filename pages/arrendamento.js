@@ -54,12 +54,12 @@
     +'<div id="antt-check-status" style="font-size:11px;min-height:0;border-radius:8px;padding:0"></div>'
   );
 
-  // ── Validar placa (sem traço, 7 chars) ────────────────────────────────
+  // ── Validar placa (7 chars sem formatacao) ────────────────────────────
   function validarPlaca(raw) {
     var p = raw.replace(/[^A-Z0-9]/g,'').toUpperCase();
     if(p.length !== 7) return null;
-    if(/^[A-Z]{3}[0-9]{4}$/.test(p)) return p; // padrao
-    if(/^[A-Z]{3}[0-9][A-Z][0-9]{2}$/.test(p)) return p; // mercosul
+    if(/^[A-Z]{3}[0-9]{4}$/.test(p)) return p;
+    if(/^[A-Z]{3}[0-9][A-Z][0-9]{2}$/.test(p)) return p;
     return null;
   }
 
@@ -69,12 +69,11 @@
     var p   = document.getElementById('antt-placa-preview');
     var raw = this.value.replace(/[^A-Z0-9]/gi,'').toUpperCase();
     var val = validarPlaca(raw);
-    if(val) {
+    if(val){
       var display = /^[A-Z]{3}[0-9]{4}$/.test(val)
-        ? val.substring(0,3)+'-'+val.substring(3)
-        : val;
+        ? val.substring(0,3)+'-'+val.substring(3) : val;
       p.innerHTML = '<span style="color:green">'+display+'</span>';
-    } else if(raw.length > 0) {
+    } else if(raw.length > 0){
       p.innerHTML = '<span style="color:orange">'+raw.length+'/7 caracteres</span>';
     } else {
       p.textContent = '';
@@ -133,34 +132,33 @@
     document.getElementById('antt-nome-preview').textContent='';
   });
 
-  // ── Digitar caractere a caractere com delay ───────────────────────────
-  // O portal insere o traco automaticamente no keyup do 4o caractere
-  // Precisamos de delay real entre cada tecla para ele processar
-  function digitarComDelay(el, chars, index, callback) {
-    if(index >= chars.length) {
-      // Fim da digitacao — dispara change e blur
-      el.dispatchEvent(new Event('change', {bubbles:true}));
-      el.dispatchEvent(new Event('blur',   {bubbles:true}));
-      if(callback) callback();
-      return;
-    }
-    var ch = chars[index];
-    el.dispatchEvent(new KeyboardEvent('keydown',  {bubbles:true, cancelable:true, key:ch}));
-    el.dispatchEvent(new KeyboardEvent('keypress', {bubbles:true, cancelable:true, key:ch}));
-    // Deixa o portal processar o keydown/keypress antes de atualizar o valor
-    setTimeout(function(){
-      // So adiciona o char se o portal nao adicionou algo (ex: o traco)
-      var valorAntes = el.value;
-      if(el.value.replace(/[^A-Z0-9]/gi,'').length === index) {
-        el.value = el.value + ch;
+  // ── Digitar placa respeitando a mascara do portal ─────────────────────
+  // Portal adiciona o traco no keyup do 4o caractere
+  // Estrategia: seta value acumulado + dispara input+keyup a cada char
+  function digitarPlaca(el, placa, callback) {
+    el.value = '';
+    el.focus();
+    el.dispatchEvent(new Event('focus', {bubbles:true}));
+
+    var i = 0;
+    function proxChar() {
+      if(i >= placa.length) {
+        el.dispatchEvent(new Event('change', {bubbles:true}));
+        el.dispatchEvent(new Event('blur', {bubbles:true}));
+        if(callback) setTimeout(callback, 200);
+        return;
       }
+      var ch = placa[i];
+      // Seta o valor acumulado ate aqui (sem traco — portal adiciona)
+      var semTraco = placa.substring(0, i+1);
+      el.value = semTraco;
       el.dispatchEvent(new Event('input', {bubbles:true}));
       el.dispatchEvent(new KeyboardEvent('keyup', {bubbles:true, cancelable:true, key:ch}));
-      // Proximo caractere apos 60ms
-      setTimeout(function(){
-        digitarComDelay(el, chars, index+1, callback);
-      }, 60);
-    }, 30);
+      i++;
+      // Delay maior no 4o caractere para o portal ter tempo de adicionar o traco
+      setTimeout(proxChar, i === 4 ? 150 : 80);
+    }
+    proxChar();
   }
 
   // ── Preencher Placa + Renavam + Verificar ─────────────────────────────
@@ -170,39 +168,38 @@
     var renavamRaw = document.getElementById('antt-renavam-input').value.trim();
     var placaVal   = validarPlaca(placaRaw);
 
-    if(!placaVal) return U.box(st,false,'Placa invalida. Use AAA0000 ou AAA0A00 (7 caracteres).');
+    if(!placaVal) return U.box(st,false,'Placa invalida. Use 7 caracteres: AAA0000 ou AAA0A00.');
     if(!renavamRaw) return U.box(st,false,'Preencha o Renavam.');
 
     var campoPlaca   = document.getElementById('Placa');
     var campoRenavam = document.getElementById('Renavam');
-    var btnVerificar = document.getElementById('verificar');
 
     if(!campoPlaca||!campoRenavam) return U.box(st,false,'Campos nao encontrados na pagina.');
-    if(!btnVerificar) return U.box(st,false,'Botao Verificar nao encontrado.');
 
     U.box(st,true,'Preenchendo placa...');
 
-    // Limpa e foca o campo antes de digitar
     campoPlaca.removeAttribute('disabled');
-    campoPlaca.value = '';
-    campoPlaca.focus();
-    campoPlaca.dispatchEvent(new Event('focus', {bubbles:true}));
 
-    // Digita a placa caractere a caractere (portal adiciona o traco sozinho)
-    digitarComDelay(campoPlaca, placaVal.split(''), 0, function(){
+    digitarPlaca(campoPlaca, placaVal, function(){
+      // Verifica se o portal formatou a placa corretamente
+      var placaFinal = campoPlaca.value;
+      U.box(st,true,'Placa: <b>'+placaFinal+'</b> — preenchendo Renavam...');
 
-      // Apos placa, preenche Renavam diretamente (sem mascara)
+      // Preenche Renavam
       campoRenavam.removeAttribute('disabled');
       campoRenavam.value = renavamRaw;
       campoRenavam.dispatchEvent(new Event('input',  {bubbles:true}));
       campoRenavam.dispatchEvent(new Event('change', {bubbles:true}));
       campoRenavam.dispatchEvent(new Event('blur',   {bubbles:true}));
 
-      // Aguarda 400ms e clica em Verificar
+      // Chama a funcao de verificar do portal diretamente
       setTimeout(function(){
-        var placaFinal = campoPlaca.value;
-        btnVerificar.click();
-        U.box(st,true,'Placa <b>'+placaFinal+'</b> e Renavam preenchidos!<br><span style="font-size:11px;color:#555">Aguardando verificacao do portal...</span>');
+        try {
+          unsafeWindow.antt.rntrc.arrendamento.VerificarVeiculo(jq('#verificar'));
+          U.box(st,true,'Placa <b>'+placaFinal+'</b> e Renavam preenchidos!<br><span style="font-size:11px;color:#555">Aguardando verificacao do portal...</span>');
+        } catch(e) {
+          U.box(st,false,'Erro ao verificar: '+e.message);
+        }
       }, 400);
     });
   });
