@@ -10,6 +10,7 @@
     +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:12px">'
       +'<button id="aba-crlv" onclick="OmegaAba(\'crlv\')" style="padding:7px;background:#1a73e8;color:#fff;border:none;border-radius:7px;font-size:12px;cursor:pointer;font-weight:bold">CRLV</button>'
       +'<button id="aba-contrato" onclick="OmegaAba(\'contrato\')" style="padding:7px;background:#e8f0fe;color:#1a73e8;border:none;border-radius:7px;font-size:12px;cursor:pointer;font-weight:bold">Contrato</button>'
+      +'<button id="aba-historico" onclick="OmegaAba(\'historico\')" style="padding:7px;background:#e8f0fe;color:#1a73e8;border:none;border-radius:7px;font-size:12px;cursor:pointer;font-weight:bold">Historico</button>'
     +'</div>'
 
     // ── ABA CRLV ──────────────────────────────────────────────────
