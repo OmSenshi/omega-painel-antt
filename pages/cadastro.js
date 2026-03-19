@@ -96,36 +96,86 @@
     if(!btn) return U.box(st, false, 'Botao "Adicionar Endereco" nao encontrado.');
     U.box(st, true, 'Abrindo formulario...');
     btn.click();
+
+    // Aguarda modal abrir
     setTimeout(function(){
       var campoCep  = document.getElementById('Cep');
       var campoTipo = document.getElementById('CodigoTipoEndereco');
       if(!campoCep) return U.box(st, false, 'Modal nao abriu. Tente novamente.');
+
+      // Seleciona tipo Correspondencia
       if(campoTipo){ campoTipo.value = 'COR'; jq(campoTipo).trigger('change'); }
-      campoCep.value = cep;
-      jq(campoCep).trigger('change').trigger('blur');
-      U.box(st, true, 'CEP '+cep+' ('+estado+') inserido. Aguardando portal...');
-      setTimeout(function(){
-        var l = document.getElementById('Logradouro');
-        var n = document.getElementById('Numero');
-        var b = document.getElementById('Bairro');
-        if(l){ l.value='0'; jq(l).trigger('input').trigger('change'); }
-        if(n){ n.value='0'; jq(n).trigger('input').trigger('change'); }
-        if(b){ b.value='0'; jq(b).trigger('input').trigger('change'); }
-        setTimeout(function(){
-          document.querySelectorAll('input[type="checkbox"]').forEach(function(cb){
-            var txt = (cb.closest('label')||cb.parentElement||{}).textContent||'';
-            if(txt.toLowerCase().includes('mesmo')||txt.toLowerCase().includes('comercial')){
-              if(!cb.checked){ cb.checked=true; jq(cb).trigger('change').trigger('click'); }
+
+      // Digita CEP caractere a caractere (sem formatacao — so numeros)
+      var cepNumeros = cep.replace(/\D/g,'');
+      campoCep.value = '';
+      campoCep.focus();
+      campoCep.dispatchEvent(new Event('focus', {bubbles:true}));
+
+      var i = 0;
+      function proxCharCep(){
+        if(i >= cepNumeros.length){
+          campoCep.dispatchEvent(new Event('change', {bubbles:true}));
+          campoCep.dispatchEvent(new Event('blur',   {bubbles:true}));
+          U.box(st, true, 'CEP '+cep+' ('+estado+') inserido. Aguardando portal buscar endereco...');
+
+          // Aguarda portal preencher logradouro/bairro (polling ate ter valor)
+          var tentativas = 0;
+          var intervalo = setInterval(function(){
+            tentativas++;
+            var l = document.getElementById('Logradouro');
+            var b = document.getElementById('Bairro');
+            var logradouroPreenchido = l && l.value && l.value.trim() !== '';
+
+            if(logradouroPreenchido || tentativas >= 20){
+              clearInterval(intervalo);
+
+              // Zera logradouro, numero e bairro
+              setTimeout(function(){
+                var l2 = document.getElementById('Logradouro');
+                var n2 = document.getElementById('Numero');
+                var b2 = document.getElementById('Bairro');
+                if(l2){ l2.value='0'; jq(l2).trigger('input').trigger('change'); }
+                if(n2){ n2.value='0'; jq(n2).trigger('input').trigger('change'); }
+                if(b2){ b2.value='0'; jq(b2).trigger('input').trigger('change'); }
+
+                // Marca checkbox "mesmo endereco comercial"
+                setTimeout(function(){
+                  document.querySelectorAll('input[type="checkbox"]').forEach(function(cb){
+                    var label = cb.closest('label') || cb.parentElement;
+                    var txt = label ? label.textContent : '';
+                    if(txt.toLowerCase().includes('mesmo') || txt.toLowerCase().includes('comercial')){
+                      if(!cb.checked){ cb.checked=true; jq(cb).trigger('change').trigger('click'); }
+                    }
+                  });
+
+                  // Salva
+                  setTimeout(function(){
+                    var btnS = document.querySelector('.btn-salvar-endereco');
+                    if(btnS && !btnS._omegaClicado){
+                      btnS._omegaClicado = true;
+                      btnS.click();
+                      U.box(st, true, 'Endereco ('+estado+' / '+cep+') salvo!');
+                      setTimeout(function(){ if(btnS) btnS._omegaClicado = false; }, 3000);
+                    } else if(!btnS) {
+                      U.box(st, false, 'Botao Salvar nao encontrado.');
+                    }
+                  }, 600);
+                }, 500);
+              }, 300);
             }
-          });
-          setTimeout(function(){
-            var btnS = document.querySelector('.btn-salvar-endereco');
-            if(btnS){ btnS.click(); U.box(st, true, 'Endereco ('+estado+' / '+cep+') salvo!'); }
-            else U.box(st, false, 'Botao Salvar nao encontrado.');
-          }, 500);
-        }, 800);
-      }, 2000);
-    }, 1000);
+          }, 500); // verifica a cada 500ms por ate 10 segundos
+          return;
+        }
+        var ch = cepNumeros[i];
+        campoCep.value += ch;
+        campoCep.dispatchEvent(new Event('input', {bubbles:true}));
+        campoCep.dispatchEvent(new KeyboardEvent('keyup', {bubbles:true, cancelable:true, key:ch}));
+        i++;
+        setTimeout(proxCharCep, 80);
+      }
+      proxCharCep();
+    }, 1200);
   }
 
   document.getElementById('omega-cep-mg').addEventListener('click', function(){ preencherEndereco('MG'); });
@@ -166,16 +216,35 @@
       if(!t||!c){ callback(false); return; }
       t.value = tipoVal; jq(t).trigger('change');
       setTimeout(function(){
-        c.value = contatoVal; jq(c).trigger('input').trigger('change');
-        setTimeout(function(){
-          var s = document.querySelector('.btn-salvar-contato');
-          if(s && !s._omegaClicado){
-            s._omegaClicado = true;
-            s.click();
-            setTimeout(function(){ if(s) s._omegaClicado = false; }, 3000);
-            callback(true);
-          } else if(!s) callback(false);
-        }, 400);
+        // Digita caractere a caractere para acionar a mascara do portal
+        c.value = '';
+        c.focus();
+        c.dispatchEvent(new Event('focus', {bubbles:true}));
+        var chars = contatoVal.split('');
+        var i = 0;
+        function proxChar(){
+          if(i >= chars.length){
+            c.dispatchEvent(new Event('change', {bubbles:true}));
+            c.dispatchEvent(new Event('blur',   {bubbles:true}));
+            setTimeout(function(){
+              var s = document.querySelector('.btn-salvar-contato');
+              if(s && !s._omegaClicado){
+                s._omegaClicado = true;
+                s.click();
+                setTimeout(function(){ if(s) s._omegaClicado = false; }, 3000);
+                callback(true);
+              } else if(!s) callback(false);
+            }, 400);
+            return;
+          }
+          var ch = chars[i];
+          c.value += ch;
+          c.dispatchEvent(new Event('input', {bubbles:true}));
+          c.dispatchEvent(new KeyboardEvent('keyup', {bubbles:true, cancelable:true, key:ch}));
+          i++;
+          setTimeout(proxChar, 50);
+        }
+        proxChar();
       }, 300);
     }, 800);
   }
