@@ -23,6 +23,7 @@
     var el = document.querySelector('.main_content');
     return el ? (el.getAttribute('data-tipo-pedido') || '') : '';
   }
+  unsafeWindow.OmegaTipoPedido = tipoPedido;
 
   function tipoCadastro() {
     var cnpj = document.getElementById('CpfCnpjTransportador');
@@ -297,7 +298,7 @@
     var item  = lista[idx];
     if(!item) return U.box(st, false, 'Item nao encontrado.');
 
-    var isMovimentacao = tipoPedido() === 'MovimentacaoFrota';
+    var isMovimentacao = (typeof unsafeWindow.OmegaTipoPedido === 'function' ? unsafeWindow.OmegaTipoPedido() : (document.querySelector('.main_content')||{getAttribute:function(){return '';}}).getAttribute('data-tipo-pedido')) === 'MovimentacaoFrota';
 
     // Verifica se popup de veiculo ja esta aberto
     var modal = document.getElementById('manterVeiculoModal');
