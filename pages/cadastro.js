@@ -4,9 +4,9 @@
   var jq = window.OmegaJQ;
 
   var CEPS = {
-    MG: ['30110-010','30130-010','30140-070','30150-320','32310-060'],
-    SP: ['01001-000','01310-100','01320-000','01410-001','01530-001'],
-    RJ: ['20040-020','20050-090','20090-003','20211-110','20231-092']
+    MG: ['32220-390','32017-900','32280-370'],
+    SP: ['04805-140','01002-900','08062-700'],
+    RJ: ['23032-486','20211-110','22793-620']
   };
 
   function cepAleatorio(estado) {
@@ -115,8 +115,15 @@
       var i = 0;
       function proxCharCep(){
         if(i >= cepNumeros.length){
+          // Dispara eventos para o portal buscar o CEP
+          campoCep.dispatchEvent(new Event('input',  {bubbles:true}));
           campoCep.dispatchEvent(new Event('change', {bubbles:true}));
+          campoCep.dispatchEvent(new KeyboardEvent('keydown', {bubbles:true, key:'Tab', keyCode:9}));
+          campoCep.dispatchEvent(new KeyboardEvent('keyup',   {bubbles:true, key:'Tab', keyCode:9}));
           campoCep.dispatchEvent(new Event('blur',   {bubbles:true}));
+          // Foca no proximo campo para garantir saida do cep
+          var campoLog = document.getElementById('Logradouro');
+          if(campoLog){ campoLog.focus(); setTimeout(function(){ campoLog.blur(); }, 100); }
           U.box(st, true, 'CEP '+cep+' ('+estado+') inserido. Aguardando portal buscar endereco...');
 
           // Aguarda portal preencher logradouro/bairro (polling ate ter valor)
