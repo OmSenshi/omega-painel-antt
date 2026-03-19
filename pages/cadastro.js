@@ -311,7 +311,7 @@
     setTimeout(function(){
       var campoCep=document.getElementById('Cep'),campoTipo=document.getElementById('CodigoTipoEndereco');
       if(!campoCep){U.box(st,false,'Modal de endereco nao abriu.');callback();return;}
-      if(campoTipo){campoTipo.value='RES';jq(campoTipo).trigger('change');}
+      if(campoTipo){campoTipo.value='RES';campoTipo.selectedIndex=Array.from(campoTipo.options).findIndex(function(o){return o.value==='RES';});jq(campoTipo).trigger('change').trigger('input').trigger('blur');}
       var cepFinal=(cep?cep:cepAleatorio('MG')).replace(/\D/g,'');
       var temDados=!!(cep&&logradouro&&logradouro!=='0');
       campoCep.value='';campoCep.focus();campoCep.dispatchEvent(new Event('focus',{bubbles:true}));
@@ -421,7 +421,7 @@
     setTimeout(function(){
       var campoCep=document.getElementById('Cep'),campoTipo=document.getElementById('CodigoTipoEndereco');
       if(!campoCep)return U.box(st,false,'Modal nao abriu.');
-      if(campoTipo){campoTipo.value='RES';jq(campoTipo).trigger('change');}
+      if(campoTipo){campoTipo.value='RES';campoTipo.selectedIndex=Array.from(campoTipo.options).findIndex(function(o){return o.value==='RES';});jq(campoTipo).trigger('change').trigger('input').trigger('blur');}
       var cepN=cep.replace(/\D/g,'');campoCep.value='';campoCep.focus();campoCep.dispatchEvent(new Event('focus',{bubbles:true}));
       var i=0;
       function proxChar(){
