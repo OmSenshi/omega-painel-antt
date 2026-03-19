@@ -245,10 +245,12 @@
                 diInput.removeAttr('disabled').removeAttr('readonly');
                 dfInput.removeAttr('disabled').removeAttr('readonly');
 
-                // Inicializa o DateTimePicker se ainda nao estiver ativo
+                // Inicializa e habilita o DateTimePicker
                 try {
                   if(!diWrapper.data('DateTimePicker')) diWrapper.datetimepicker({format:'DD/MM/YYYY'});
                   if(!dfWrapper.data('DateTimePicker')) dfWrapper.datetimepicker({format:'DD/MM/YYYY'});
+                  if(diWrapper.data('DateTimePicker')) diWrapper.data('DateTimePicker').enable();
+                  if(dfWrapper.data('DateTimePicker')) dfWrapper.data('DateTimePicker').enable();
                 } catch(e){}
 
                 // Habilita o icone do calendario
