@@ -541,11 +541,13 @@
                 if(tent>=20){clearInterval(intv);salvar();}
               },300);
 
+              var _jaSalvou = false;
               function salvar(){
+                if(_jaSalvou) return;
+                _jaSalvou = true;
                 var tara=document.getElementById('Tara');
                 if(tara&&(!tara.value||tara.value==='')){tara.removeAttribute('disabled');tara.value='2';jqRef(tara).trigger('input').trigger('change');}
                 setTimeout(function(){
-                  // Usa apenas btn-salvar-veiculo — btn-confirmar-inclusao ja foi clicado no fluxo de popup
                   var btnS=document.querySelector('.btn-salvar-veiculo');
                   if(btnS){btnS.removeAttribute('disabled');btnS.click();U.box(st,true,'Veiculo salvo! Placa: <b>'+campoPlaca.value+'</b>');}
                   else U.box(st,false,'Botao Salvar nao encontrado.');
