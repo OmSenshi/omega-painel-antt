@@ -216,7 +216,12 @@
           var cpf     = document.getElementById('CPFCNPJArrendante').value;
           var url     = '/ContratoArrendamento/verificarVeiculo';
 
-          jq.ajax({
+          var stRef = st;
+          var placaRef = placa;
+          var uRef = U;
+          var jqRef = unsafeWindow.jQuery;
+
+          jqRef.ajax({
             type: 'GET',
             url:  url,
             cache: false,
@@ -226,26 +231,25 @@
               cpfCnpjProprietario: cpf
             },
             success: function(resp){
-              console.log('[Omega] resposta verificar:', JSON.stringify(resp));
               if(resp && resp.success === true){
-                // Habilita campos de data diretamente
+                // Habilita campos de data
                 var di = document.getElementById('DataInicio');
                 var df = document.getElementById('DataFim');
                 var ca = document.getElementById('CPFCNPJArrendatario');
                 if(di) di.removeAttribute('disabled');
                 if(df) df.removeAttribute('disabled');
                 if(ca) ca.removeAttribute('disabled');
-                // Dispara change no select do CPF para o portal atualizar os campos dependentes
+                // Dispara change no select para o portal atualizar campos dependentes
                 var sel = document.getElementById('CPFCNPJArrendanteTransportador');
-                if(sel) jq(sel).trigger('change');
-                U.box(st,true,'Veiculo verificado! Placa <b>'+placa+'</b> OK — preencha os campos restantes.');
+                if(sel) jqRef(sel).trigger('change');
+                uRef.box(stRef,true,'Veiculo verificado! Placa <b>'+placaRef+'</b> OK');
               } else {
                 var msg = (resp && resp.ErrorMessage) ? resp.ErrorMessage : 'Veiculo nao encontrado ou nao pertence ao transportador.';
-                U.box(st,false,'Erro: '+msg);
+                uRef.box(stRef,false,'Erro: '+msg);
               }
             },
             error: function(xhr,status,err){
-              U.box(st,false,'Falha na requisicao: '+status+' — '+err);
+              uRef.box(stRef,false,'Falha na requisicao: '+status+' — '+err);
             }
           });
           U.box(st,true,'Verificando veiculo...');
