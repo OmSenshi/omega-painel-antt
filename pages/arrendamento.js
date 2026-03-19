@@ -132,42 +132,53 @@
     var raw=document.getElementById('antt-cpf-input').value.replace(/\D/g,'');
     var nn=document.getElementById('antt-nome-input').value.trim().toUpperCase();
     var msgs=[];
+
     if(raw&&(raw.length===11||raw.length===14)){
-      var nf=U.fAuto(raw), ap=U.getDoc();
-      if(ap){
-        // Seleciona no dropdown PRIMEIRO, antes de substituir textos
-        var sel=document.getElementById('CPFCNPJArrendanteTransportador'), selecionou=false;
-        // Seleciona a primeira option valida (nao vazia) do dropdown
-        var sel=document.getElementById('CPFCNPJArrendanteTransportador'), selecionou=false;
-        if(sel){
-          for(var i=0;i<sel.options.length;i++){
-            if(sel.options[i].value && sel.options[i].value.replace(/\D/g,'') !== ''){
-              sel.selectedIndex=i;
-              sel.dispatchEvent(new Event('change',{bubbles:true}));
-              if(jq) jq(sel).trigger('change');
-              selecionou=true;
-              break;
-            }
-          }
-          // Se nao encontrou por value, tenta pelo texto
-          if(!selecionou){
-            for(var i=0;i<sel.options.length;i++){
-              if(sel.options[i].text && sel.options[i].text !== 'Selecione'){
-                sel.selectedIndex=i;
-                sel.dispatchEvent(new Event('change',{bubbles:true}));
-                if(jq) jq(sel).trigger('change');
-                selecionou=true;
-                break;
-              }
-            }
+      var nf=U.fAuto(raw);
+      // Captura o doc antigo ANTES de qualquer acao
+      var ap=U.getDoc();
+
+      // Seleciona a primeira option valida do dropdown
+      var sel=document.getElementById('CPFCNPJArrendanteTransportador'), selecionou=false;
+      if(sel){
+        for(var i=0;i<sel.options.length;i++){
+          if(sel.options[i].text && sel.options[i].text !== 'Selecione'){
+            sel.selectedIndex=i;
+            sel.dispatchEvent(new Event('change',{bubbles:true}));
+            if(jq) jq(sel).trigger('change');
+            selecionou=true;
+            break;
           }
         }
-        // Substituicoes depois da selecao
-        var r1=U.substituirTudo(U.fAuto(ap),nf); var r2=U.substituirTudo(ap,raw);
-        var tot=r1.total+r2.total;
-        msgs.push('CPF: <b>'+nf+'</b> ('+tot+' trocas'+(selecionou?', selecionado':'')+')');
       }
+
+      // Aguarda o portal processar a selecao antes de substituir
+      setTimeout(function(){
+        var tot=0;
+        if(ap){
+          var r1=U.substituirTudo(U.fAuto(ap),nf);
+          var r2=U.substituirTudo(ap,raw);
+          tot=r1.total+r2.total;
+        }
+        msgs.push('CPF: <b>'+nf+'</b> ('+tot+' trocas'+(selecionou?', selecionado':'')+')');
+
+        if(nn){
+          var an=U.getNome();
+          if(an){
+            var res=U.substituirTudo(an,nn);
+            var cv=document.getElementById('NomeArrendanteInput');
+            if(cv){cv.removeAttribute('disabled');cv.value=nn;cv.setAttribute('disabled','disabled');}
+            msgs.push('Nome: <b>'+nn+'</b> ('+res.total+' trocas)');
+          }
+        }
+
+        if(msgs.length>0) U.box(st,true,msgs.join('<br>'));
+        else U.box(st,false,'Preencha CPF/CNPJ ou Nome.');
+      }, 600);
+      return; // sai antes do bloco de nome/status abaixo
     }
+
+    // Sem CPF — apenas nome
     if(nn){
       var an=U.getNome();
       if(an){
