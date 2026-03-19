@@ -76,78 +76,74 @@
       +'<button id="omega-cad-iniciar-btn" style="width:100%;padding:9px;background:#34a853;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:bold;margin-top:2px">&#9654; Iniciar Automacao</button>'
       +'<div id="omega-cad-iniciar-status" style="font-size:11px;min-height:0;border-radius:6px;padding:0;margin-top:5px"></div>'
     +'</div>'
-  );
 
-  // ── ABA: ACOES (aparece conforme aba do portal) ─────────────────
-  U.registrarAba('acoes', 'Acoes', ''
-    +'<div id="omega-cad-contatos" style="display:none">'
-      +'<div style="font-size:11px;font-weight:bold;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Endereco</div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px">'
-        +'<button id="omega-cep-mg" style="padding:8px;background:#1a73e8;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer;font-weight:bold">MG</button>'
-        +'<button id="omega-cep-sp" style="padding:8px;background:#1a73e8;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer;font-weight:bold">SP</button>'
-        +'<button id="omega-cep-rj" style="padding:8px;background:#1a73e8;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer;font-weight:bold">RJ</button>'
+    // Acoes — fixo abaixo do formulario, aparece conforme aba do portal
+    +'<div id="omega-cad-acoes" style="display:none">'
+      +'<hr style="margin:10px 0;border:none;border-top:1px solid #eee">'
+      +'<div id="omega-cad-contatos" style="display:none">'
+        +'<div style="font-size:11px;font-weight:bold;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Endereco</div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px">'
+          +'<button id="omega-cep-mg" style="padding:8px;background:#1a73e8;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer;font-weight:bold">MG</button>'
+          +'<button id="omega-cep-sp" style="padding:8px;background:#1a73e8;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer;font-weight:bold">SP</button>'
+          +'<button id="omega-cep-rj" style="padding:8px;background:#1a73e8;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer;font-weight:bold">RJ</button>'
+        +'</div>'
+        +'<div id="omega-cep-status" style="font-size:11px;min-height:0;border-radius:6px;padding:0;margin-bottom:8px"></div>'
+        +'<hr style="margin:8px 0;border:none;border-top:1px solid #eee">'
+        +'<div style="font-size:11px;font-weight:bold;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Contato</div>'
+        +'<button id="omega-contato-btn" style="width:100%;padding:8px;background:#1a73e8;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer;font-weight:bold">Adicionar Telefone + Email</button>'
+        +'<div id="omega-contato-status" style="font-size:11px;min-height:0;border-radius:6px;padding:0"></div>'
       +'</div>'
-      +'<div id="omega-cep-status" style="font-size:11px;min-height:0;border-radius:6px;padding:0;margin-bottom:8px"></div>'
-      +'<hr style="margin:8px 0;border:none;border-top:1px solid #eee">'
-      +'<div style="font-size:11px;font-weight:bold;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Contato</div>'
-      +'<button id="omega-contato-btn" style="width:100%;padding:8px;background:#1a73e8;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer;font-weight:bold">Adicionar Telefone + Email</button>'
-      +'<div id="omega-contato-status" style="font-size:11px;min-height:0;border-radius:6px;padding:0"></div>'
+      +'<div id="omega-cad-rt" style="display:none">'
+        +'<div style="font-size:11px;font-weight:bold;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Responsavel Tecnico</div>'
+        +'<button id="omega-rt-btn" style="width:100%;padding:8px;background:#1a73e8;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer;font-weight:bold">Adicionar RT</button>'
+        +'<div id="omega-rt-status" style="font-size:11px;min-height:0;border-radius:6px;padding:0"></div>'
+      +'</div>'
+      +'<div id="omega-cad-veiculo" style="display:none">'
+        +'<div style="font-size:11px;font-weight:bold;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Veiculo</div>'
+        +'<div id="omega-veiculo-hist" style="max-height:180px;overflow-y:auto;margin-bottom:6px"></div>'
+        +'<div id="omega-veiculo-vazio" style="font-size:11px;color:#aaa;text-align:center;padding:8px 0">Nenhum veiculo no historico</div>'
+        +'<div id="omega-veiculo-status" style="font-size:11px;min-height:0;border-radius:6px;padding:0"></div>'
+      +'</div>'
     +'</div>'
-    +'<div id="omega-cad-rt" style="display:none">'
-      +'<div style="font-size:11px;font-weight:bold;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Responsavel Tecnico</div>'
-      +'<button id="omega-rt-btn" style="width:100%;padding:8px;background:#1a73e8;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer;font-weight:bold">Adicionar RT</button>'
-      +'<div id="omega-rt-status" style="font-size:11px;min-height:0;border-radius:6px;padding:0"></div>'
-    +'</div>'
-    +'<div id="omega-cad-veiculo" style="display:none">'
-      +'<div style="font-size:11px;font-weight:bold;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Veiculo</div>'
-      +'<div id="omega-veiculo-hist" style="max-height:180px;overflow-y:auto;margin-bottom:6px"></div>'
-      +'<div id="omega-veiculo-vazio" style="font-size:11px;color:#aaa;text-align:center;padding:8px 0">Nenhum veiculo no historico</div>'
-      +'<div id="omega-veiculo-status" style="font-size:11px;min-height:0;border-radius:6px;padding:0"></div>'
-    +'</div>'
-    +'<div id="omega-acoes-vazio" style="font-size:11px;color:#aaa;text-align:center;padding:16px 0">Navegue para a aba correta no portal<br><span style="font-size:10px">(Contatos, RT ou Veiculo)</span></div>'
   , function(){ atualizarSecaoAcoes(); });
+
+  // Move o botao Cadastro para a primeira posicao no grid de abas
+  var tabsDiv = document.getElementById('omega-tabs');
+  var btnCad  = document.querySelector('#omega-tabs button[data-aba="cadastro"]');
+  if(tabsDiv && btnCad) tabsDiv.insertBefore(btnCad, tabsDiv.firstChild);
 
   // ── Listeners abas do portal ────────────────────────────────────
   document.querySelectorAll('.nav-tabs .nav-link').forEach(function(link){
-    link.addEventListener('shown.bs.tab', function(){
-      var abaAtual = document.querySelector('#omega-tabs button[style*="background: rgb(26, 115, 232)"], #omega-tabs button[style*="background:#1a73e8"]');
-      // Atualiza acoes se aba acoes estiver ativa
-      var conteudoAcoes = document.querySelector('[data-aba-content="acoes"]');
-      if(conteudoAcoes && conteudoAcoes.style.display !== 'none') atualizarSecaoAcoes();
-    });
-    link.addEventListener('click', function(){
-      setTimeout(function(){
-        var conteudoAcoes = document.querySelector('[data-aba-content="acoes"]');
-        if(conteudoAcoes && conteudoAcoes.style.display !== 'none') atualizarSecaoAcoes();
-      }, 300);
-    });
+    link.addEventListener('shown.bs.tab', atualizarSecaoAcoes);
+    link.addEventListener('click', function(){ setTimeout(atualizarSecaoAcoes, 300); });
   });
 
   function atualizarSecaoAcoes() {
+    // So atua se a aba Cadastro do painel estiver visivel
+    var conteudoCad = document.querySelector('[data-aba-content="cadastro"]');
+    if(!conteudoCad || conteudoCad.style.display === 'none') return;
+
     var aba = abaPortalAtiva();
     var isMovimentacao = tipoPedido() === 'MovimentacaoFrota';
+    var wrapper = document.getElementById('omega-cad-acoes');
     var cont    = document.getElementById('omega-cad-contatos');
     var rt      = document.getElementById('omega-cad-rt');
     var veiculo = document.getElementById('omega-cad-veiculo');
-    var vazio   = document.getElementById('omega-acoes-vazio');
-
-    var algumAtivo = false;
 
     if(isMovimentacao){
+      wrapper.style.display = 'block';
       cont.style.display    = 'none';
       rt.style.display      = 'none';
       veiculo.style.display = 'block';
-      if(vazio) vazio.style.display = 'none';
       renderHistoricoVeiculo();
       return;
     }
 
+    var algumAtivo = (aba==='#contatos'||aba==='#responsavelTecnico'||aba==='#veiculo');
+    wrapper.style.display = algumAtivo ? 'block' : 'none';
     cont.style.display    = aba==='#contatos'           ? 'block' : 'none';
     rt.style.display      = aba==='#responsavelTecnico' ? 'block' : 'none';
     veiculo.style.display = aba==='#veiculo'            ? 'block' : 'none';
-
-    algumAtivo = (aba==='#contatos'||aba==='#responsavelTecnico'||aba==='#veiculo');
-    if(vazio) vazio.style.display = algumAtivo ? 'none' : 'block';
     if(aba==='#veiculo') renderHistoricoVeiculo();
   }
 
