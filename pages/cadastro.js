@@ -18,7 +18,7 @@
   U.registrarAba('cadastro', 'Cadastro', ''
     +'<div style="display:flex;gap:6px;margin-bottom:8px">'
       +'<input id="omega-cad-import-input" placeholder="Cole o codigo OMEGA Cadastro aqui" style="flex:1;padding:6px;border:1px solid #ddd;border-radius:7px;font-size:11px;box-sizing:border-box">'
-      +'<button id="omega-cad-import-btn" style="padding:6px 10px;background:#f1a9a0;color:#fff;border:none;border-radius:7px;font-size:11px;cursor:pointer;font-weight:bold;white-space:nowrap">Importar</button>'
+      +'<button type="button" id="omega-cad-import-btn" style="padding:6px 10px;background:#f1a9a0;color:#fff;border:none;border-radius:7px;font-size:11px;cursor:pointer;font-weight:bold;white-space:nowrap">Importar</button>'
     +'</div>'
     +'<div id="omega-cad-import-status" style="font-size:11px;min-height:0;border-radius:6px;padding:0;margin-bottom:6px"></div>'
 
@@ -73,7 +73,7 @@
           +'<input id="omega-cad-cpf-socio" placeholder="00000000000" style="width:100%;margin-top:2px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box"></div>'
       +'</div>'
 
-      +'<button id="omega-cad-iniciar-btn" style="width:100%;padding:9px;background:#34a853;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:bold;margin-top:2px">&#9654; Iniciar Automacao</button>'
+      +'<button type="button" id="omega-cad-iniciar-btn" style="width:100%;padding:9px;background:#34a853;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:bold;margin-top:2px">&#9654; Iniciar Automacao</button>'
       +'<div id="omega-cad-iniciar-status" style="font-size:11px;min-height:0;border-radius:6px;padding:0;margin-top:5px"></div>'
     +'</div>'
 
@@ -145,7 +145,8 @@
   }
 
   // ── Importar codigo ─────────────────────────────────────────────
-  document.getElementById('omega-cad-import-btn').addEventListener('click', function(){
+  document.getElementById('omega-cad-import-btn').addEventListener('click', function(e){
+    e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
     var codigo = document.getElementById('omega-cad-import-input').value.trim();
     var st     = document.getElementById('omega-cad-import-status');
     if(!codigo) return U.box(st, false, 'Cole o codigo gerado pelo Claude.');
@@ -184,15 +185,18 @@
 
   // ── Iniciar ─────────────────────────────────────────────────────
   document.getElementById('omega-cad-iniciar-btn').addEventListener('click', function(e){
-    e.preventDefault(); e.stopPropagation();
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
     var st = document.getElementById('omega-cad-iniciar-status');
-    if(this._omegaClicado) return;
+    if(this._omegaClicado) return false;
     this._omegaClicado = true;
     var self = this; setTimeout(function(){self._omegaClicado=false;},8000);
     var tipo = document.getElementById('omega-cad-tipo-badge').textContent.indexOf('CNPJ')!==-1?'CNPJ':'CPF';
     U.box(st, true, 'Iniciando...');
     if(tipo==='CPF') iniciarCPF(st); else iniciarCNPJ(st);
-  });
+    return false;
+  }, true); // capture=true para interceptar antes do form
 
   // ── AUTOMACAO CPF ───────────────────────────────────────────────
   function iniciarCPF(st) {
@@ -260,52 +264,22 @@
   }
 
   // ── Transportador CPF ───────────────────────────────────────────
-  // CORRIGIDO v11.1: seletor restrito a .nav-tabs para nunca capturar
-  // links de navegacao do menu lateral (evita redirect para /Transportador/Cadastro)
   function preencherTransportadorCPF(identidade, uf, callback) {
-    var campoIdent = document.getElementById('Identidade')
-                  || document.querySelector('input[name="Identidade"]');
-    var campoOrgao = document.getElementById('OrgaoEmissor')
-                  || document.querySelector('input[name="OrgaoEmissor"]');
-    var campoUF    = document.getElementById('UF')
-                  || document.querySelector('select[name*="UF"]');
-
+    var campoIdent=document.getElementById('Identidade')||document.querySelector('input[name="Identidade"]');
+    var campoOrgao=document.getElementById('OrgaoEmissor')||document.querySelector('input[name="OrgaoEmissor"]');
+    var campoUF   =document.getElementById('UF')||document.querySelector('select[name*="UF"]');
     if(!campoIdent){
-      // Tenta ativar a aba interna do formulario sem sair da pagina atual.
-      // O seletor e propositalmente restrito a .nav-tabs para nunca pegar
-      // links do menu lateral que contenham "Transportador" na URL.
-      var tabT = document.querySelector(
-        '.nav-tabs a[href="#transportador"], ' +
-        '.nav-tabs a[href="#dadosTransportador"], ' +
-        '.nav-tabs a[href="#transportadorDados"]'
-      );
-      if(tabT){
-        tabT.click();
-      } else {
-        // Fallback: procura qualquer tab interna pelo texto, sem usar href
-        document.querySelectorAll('.nav-tabs .nav-link, .nav-tabs li a').forEach(function(el){
-          if(!tabT){
-            var txt = (el.textContent||'').toLowerCase().trim();
-            if(txt === 'transportador' || txt === 'dados do transportador'){
-              tabT = el;
-            }
-          }
-        });
-        if(tabT) tabT.click();
-      }
-
+      var tabT=document.querySelector('a[href="#transportador"],a[href*="Transportador"]');
+      if(tabT)tabT.click();
       setTimeout(function(){
-        campoIdent = document.getElementById('Identidade')
-                  || document.querySelector('input[name="Identidade"]');
-        campoOrgao = document.getElementById('OrgaoEmissor')
-                  || document.querySelector('input[name="OrgaoEmissor"]');
-        campoUF    = document.getElementById('UF')
-                  || document.querySelector('select[name*="UF"]');
-        _fillIdent(campoIdent, campoOrgao, campoUF, identidade, uf, callback);
-      }, 800);
+        campoIdent=document.getElementById('Identidade')||document.querySelector('input[name="Identidade"]');
+        campoOrgao=document.getElementById('OrgaoEmissor')||document.querySelector('input[name="OrgaoEmissor"]');
+        campoUF   =document.getElementById('UF')||document.querySelector('select[name*="UF"]');
+        _fillIdent(campoIdent,campoOrgao,campoUF,identidade,uf,callback);
+      },800);
       return;
     }
-    _fillIdent(campoIdent, campoOrgao, campoUF, identidade, uf, callback);
+    _fillIdent(campoIdent,campoOrgao,campoUF,identidade,uf,callback);
   }
 
   function _fillIdent(ci,co,cu,identidade,uf,cb){
