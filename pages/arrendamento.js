@@ -135,8 +135,18 @@
 
     if(raw&&(raw.length===11||raw.length===14)){
       var nf=U.fAuto(raw);
+
       // Captura o doc antigo ANTES de qualquer acao
-      var ap=U.getDoc();
+      // Prioriza NomesTransportador (tem o CNPJ correto do arrendante)
+      var ap = null;
+      var nt = document.getElementById('NomesTransportador');
+      if(nt && nt.value){
+        try{
+          var arr = JSON.parse(nt.value);
+          if(arr && arr[0] && arr[0].CpfCnpj) ap = arr[0].CpfCnpj.replace(/\D/g,'');
+        }catch(e){}
+      }
+      if(!ap) ap = U.getDoc();
 
       // Seleciona a primeira option valida do dropdown
       var sel=document.getElementById('CPFCNPJArrendanteTransportador'), selecionou=false;
