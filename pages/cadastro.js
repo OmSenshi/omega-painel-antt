@@ -298,7 +298,8 @@
     var item  = lista[idx];
     if(!item) return U.box(st, false, 'Item nao encontrado.');
 
-    var isMovimentacao = (typeof unsafeWindow.OmegaTipoPedido === 'function' ? unsafeWindow.OmegaTipoPedido() : (document.querySelector('.main_content')||{getAttribute:function(){return '';}}).getAttribute('data-tipo-pedido')) === 'MovimentacaoFrota';
+    var _mainContent = document.querySelector('.main_content');
+    var isMovimentacao = _mainContent ? _mainContent.getAttribute('data-tipo-pedido') === 'MovimentacaoFrota' : false;
 
     // Verifica se popup de veiculo ja esta aberto
     var modal = document.getElementById('manterVeiculoModal');
@@ -336,13 +337,13 @@
             setTimeout(function(){
               var placa   = campoPlaca.value.toUpperCase();
               var renavam = campoRenavam.value;
+              U.box(st, true, 'Verificando... aguardando portal (pode aparecer popup)');
               jq.ajax({
                 type:'GET', url:'/Veiculo/BuscarVeiculo', cache:false,
                 data:{ placa:placa, renavam:renavam },
-                success: function(){ if(btnVerificar) btnVerificar.click(); },
-                error:   function(){ if(btnVerificar) btnVerificar.click(); }
+                success: function(){ setTimeout(function(){ if(btnVerificar) btnVerificar.click(); }, 500); },
+                error:   function(){ setTimeout(function(){ if(btnVerificar) btnVerificar.click(); }, 500); }
               });
-              U.box(st, true, 'Verificando... aguardando portal (pode aparecer popup)');
               monitorarPopupsVeiculo(st, function(){
                 var campoTara = document.getElementById('Tara');
                 if(campoTara && (!campoTara.value || campoTara.value==='')){
