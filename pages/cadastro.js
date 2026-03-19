@@ -311,7 +311,15 @@
     setTimeout(function(){
       var campoCep=document.getElementById('Cep'),campoTipo=document.getElementById('CodigoTipoEndereco');
       if(!campoCep){U.box(st,false,'Modal de endereco nao abriu.');callback();return;}
-      if(campoTipo){campoTipo.value='RES';campoTipo.selectedIndex=Array.from(campoTipo.options).findIndex(function(o){return o.value==='RES';});jq(campoTipo).trigger('change').trigger('input').trigger('blur');}
+
+      // Seta Residencial com delay para garantir que o modal terminou de renderizar
+      var jqRef = unsafeWindow.jQuery || unsafeWindow.$;
+      function setarResidencial(){
+        var ct = document.getElementById('CodigoTipoEndereco');
+        if(ct){ ct.value='RES'; ct.selectedIndex=Array.from(ct.options).findIndex(function(o){return o.value==='RES';}); jqRef(ct).trigger('change'); }
+      }
+      setarResidencial();
+      setTimeout(setarResidencial, 300); // segunda tentativa para garantir
       var cepFinal=(cep?cep:cepAleatorio('MG')).replace(/\D/g,'');
       var temDados=!!(cep&&logradouro&&logradouro!=='0');
       campoCep.value='';campoCep.focus();campoCep.dispatchEvent(new Event('focus',{bubbles:true}));
@@ -419,9 +427,12 @@
     if(!btn)return U.box(st,false,'Botao Endereco nao encontrado.');
     U.box(st,true,'Abrindo formulario...');btn.click();
     setTimeout(function(){
-      var campoCep=document.getElementById('Cep'),campoTipo=document.getElementById('CodigoTipoEndereco');
+      var campoCep=document.getElementById('Cep');
       if(!campoCep)return U.box(st,false,'Modal nao abriu.');
-      if(campoTipo){campoTipo.value='RES';campoTipo.selectedIndex=Array.from(campoTipo.options).findIndex(function(o){return o.value==='RES';});jq(campoTipo).trigger('change').trigger('input').trigger('blur');}
+      var jqRef=unsafeWindow.jQuery||unsafeWindow.$;
+      function setarResidencial(){ var ct=document.getElementById('CodigoTipoEndereco'); if(ct){ct.value='RES';ct.selectedIndex=Array.from(ct.options).findIndex(function(o){return o.value==='RES';});jqRef(ct).trigger('change');} }
+      setarResidencial();
+      setTimeout(setarResidencial, 300);
       var cepN=cep.replace(/\D/g,'');campoCep.value='';campoCep.focus();campoCep.dispatchEvent(new Event('focus',{bubbles:true}));
       var i=0;
       function proxChar(){
