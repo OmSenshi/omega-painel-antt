@@ -23,7 +23,8 @@
     var el = document.querySelector('.main_content');
     return el ? (el.getAttribute('data-tipo-pedido') || '') : '';
   }
-  unsafeWindow.OmegaTipoPedido = tipoPedido;
+  // Salva o tipo de pedido no DOM para ficar acessivel em qualquer contexto
+  document.body.setAttribute('data-omega-tipo-pedido', tipoPedido());
 
   function tipoCadastro() {
     var cnpj = document.getElementById('CpfCnpjTransportador');
@@ -66,6 +67,7 @@
   function atualizarSecao() {
     var aba = abaAtiva();
     var isMovimentacao = tipoPedido() === 'MovimentacaoFrota';
+    document.body.setAttribute('data-omega-tipo-pedido', tipoPedido());
 
     if(isMovimentacao){
       document.getElementById('omega-cad-contatos').style.display  = 'none';
@@ -298,8 +300,7 @@
     var item  = lista[idx];
     if(!item) return U.box(st, false, 'Item nao encontrado.');
 
-    var _mainContent = document.querySelector('.main_content');
-    var isMovimentacao = _mainContent ? _mainContent.getAttribute('data-tipo-pedido') === 'MovimentacaoFrota' : false;
+    var isMovimentacao = document.body.getAttribute('data-omega-tipo-pedido') === 'MovimentacaoFrota';
 
     // Verifica se popup de veiculo ja esta aberto
     var modal = document.getElementById('manterVeiculoModal');
