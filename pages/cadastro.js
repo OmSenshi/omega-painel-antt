@@ -14,7 +14,7 @@
     return lista[Math.floor(Math.random() * lista.length)];
   }
 
-  function abaAtiva() {
+  function abaPortalAtiva() {
     var tab = document.querySelector('.nav-tabs .nav-link.active');
     return tab ? tab.getAttribute('href') : '';
   }
@@ -30,39 +30,24 @@
     return cnpj.value.replace(/\D/g,'').length === 14 ? 'CNPJ' : 'CPF';
   }
 
-  // ── Injeta aba "Cadastro" no sistema de abas do arrendamento ───
-  // Aguarda o arrendamento.js criar as abas antes de injetar
-  function injetarAbaCadastro() {
-    var tabsDiv = document.querySelector('#omega-content > div[style*="grid-template-columns"]');
-    if(!tabsDiv) return;
+  // ── HTML do painel ──────────────────────────────────────────────
+  U.addSecao(''
 
-    // Verifica se ja foi injetado
-    if(document.getElementById('aba-cadastro')) return;
+    // Abas proprias do cadastro.js
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:10px">'
+      +'<button id="omega-cad-tab-cad"   onclick="OmegaCadTab(\'cad\')"   style="padding:7px;background:#1a73e8;color:#fff;border:none;border-radius:7px;font-size:12px;cursor:pointer;font-weight:bold">Cadastro</button>'
+      +'<button id="omega-cad-tab-acoes" onclick="OmegaCadTab(\'acoes\')" style="padding:7px;background:#e8f0fe;color:#1a73e8;border:none;border-radius:7px;font-size:12px;cursor:pointer;font-weight:bold">Acoes</button>'
+    +'</div>'
 
-    // Ajusta grid para 4 colunas
-    tabsDiv.style.gridTemplateColumns = '1fr 1fr 1fr 1fr';
+    // ══ ABA CADASTRO ══════════════════════════════════════════════
+    +'<div id="omega-aba-cad">'
 
-    // Cria botao da aba
-    var btn = document.createElement('button');
-    btn.id = 'aba-cadastro';
-    btn.textContent = 'Cadastro';
-    btn.style.cssText = 'padding:7px;background:#e8f0fe;color:#1a73e8;border:none;border-radius:7px;font-size:12px;cursor:pointer;font-weight:bold';
-    btn.onclick = function(){ OmegaAba('cadastro'); };
-    tabsDiv.appendChild(btn);
-
-    // Cria container da aba Cadastro
-    var div = document.createElement('div');
-    div.id = 'omega-aba-cadastro';
-    div.style.display = 'none';
-    div.innerHTML = ''
-      // Campo importar
       +'<div style="display:flex;gap:6px;margin-bottom:8px">'
         +'<input id="omega-cad-import-input" placeholder="Cole o codigo OMEGA Cadastro aqui" style="flex:1;padding:6px;border:1px solid #ddd;border-radius:7px;font-size:11px;box-sizing:border-box">'
         +'<button id="omega-cad-import-btn" style="padding:6px 10px;background:#f1a9a0;color:#fff;border:none;border-radius:7px;font-size:11px;cursor:pointer;font-weight:bold;white-space:nowrap">Importar</button>'
       +'</div>'
       +'<div id="omega-cad-import-status" style="font-size:11px;min-height:0;border-radius:6px;padding:0;margin-bottom:6px"></div>'
 
-      // Campos editaveis
       +'<div id="omega-cad-campos" style="display:none">'
 
         +'<div id="omega-cad-tipo-badge" style="font-size:11px;font-weight:bold;color:#fff;background:#1a73e8;border-radius:6px;padding:3px 8px;display:inline-block;margin-bottom:8px"></div>'
@@ -71,14 +56,10 @@
         +'<div id="omega-cad-sec-id" style="display:none">'
           +'<div style="font-size:10px;font-weight:bold;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Identidade / CNH</div>'
           +'<div style="display:grid;grid-template-columns:2fr 1fr;gap:6px;margin-bottom:6px">'
-            +'<div>'
-              +'<label style="font-size:10px;color:#888">Numero</label>'
-              +'<input id="omega-cad-identidade" placeholder="000000" style="width:100%;margin-top:2px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box">'
-            +'</div>'
-            +'<div>'
-              +'<label style="font-size:10px;color:#888">UF</label>'
-              +'<input id="omega-cad-uf" placeholder="MG" maxlength="2" style="width:100%;margin-top:2px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box;text-transform:uppercase">'
-            +'</div>'
+            +'<div><label style="font-size:10px;color:#888">Numero</label>'
+              +'<input id="omega-cad-identidade" placeholder="000000" style="width:100%;margin-top:2px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box"></div>'
+            +'<div><label style="font-size:10px;color:#888">UF</label>'
+              +'<input id="omega-cad-uf" placeholder="MG" maxlength="2" style="width:100%;margin-top:2px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box;text-transform:uppercase"></div>'
           +'</div>'
         +'</div>'
 
@@ -119,65 +100,17 @@
             +'<input id="omega-cad-cpf-socio" placeholder="00000000000" style="width:100%;margin-top:2px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box"></div>'
         +'</div>'
 
-        // Botao Iniciar
-        +'<button id="omega-cad-iniciar-btn" style="width:100%;padding:9px;background:#34a853;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:bold;margin-top:2px">▶ Iniciar Automacao</button>'
+        +'<button id="omega-cad-iniciar-btn" style="width:100%;padding:9px;background:#34a853;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:bold;margin-top:2px">&#9654; Iniciar Automacao</button>'
         +'<div id="omega-cad-iniciar-status" style="font-size:11px;min-height:0;border-radius:6px;padding:0;margin-top:5px"></div>'
 
-      +'</div>'; // fim omega-cad-campos
+      +'</div>'
+    +'</div>' // fim omega-aba-cad
 
-    // Insere o container logo apos o div de abas
-    tabsDiv.parentNode.insertBefore(div, tabsDiv.nextSibling);
+    // ══ ABA ACOES ═════════════════════════════════════════════════
+    +'<div id="omega-aba-acoes" style="display:none">'
 
-    // Eventos
-    document.getElementById('omega-cad-import-btn').addEventListener('click', importarCodigo);
-    document.getElementById('omega-cad-iniciar-btn').addEventListener('click', iniciarAutomacao);
-  }
-
-  // ── Hookar o OmegaAba original para suportar aba cadastro ──────
-  // Aguarda arrendamento.js definir OmegaAba antes de sobrescrever
-  function hookOmegaAba() {
-    if(typeof unsafeWindow.OmegaAba !== 'function') {
-      setTimeout(hookOmegaAba, 100);
-      return;
-    }
-    var _original = unsafeWindow.OmegaAba;
-    unsafeWindow.OmegaAba = function(aba) {
-      if(aba === 'cadastro') {
-        // Oculta todas as abas do arrendamento
-        ['crlv','contrato','historico'].forEach(function(a){
-          var el = document.getElementById('omega-aba-'+a);
-          if(el) el.style.display = 'none';
-          var btn = document.getElementById('aba-'+a);
-          if(btn){ btn.style.background='#e8f0fe'; btn.style.color='#1a73e8'; }
-        });
-        // Mostra aba cadastro
-        var cadDiv = document.getElementById('omega-aba-cadastro');
-        if(cadDiv) cadDiv.style.display = 'block';
-        var cadBtn = document.getElementById('aba-cadastro');
-        if(cadBtn){ cadBtn.style.background='#1a73e8'; cadBtn.style.color='#fff'; }
-        // Oculta painel de acoes do cadastro
-        document.getElementById('omega-cad-acoes').style.display = 'none';
-      } else {
-        // Chama original para CRLV/Contrato/Historico
-        _original(aba);
-        // Oculta aba cadastro
-        var cadDiv = document.getElementById('omega-aba-cadastro');
-        if(cadDiv) cadDiv.style.display = 'none';
-        var cadBtn = document.getElementById('aba-cadastro');
-        if(cadBtn){ cadBtn.style.background='#e8f0fe'; cadBtn.style.color='#1a73e8'; }
-        // Oculta painel de acoes (sera mostrado por atualizarSecao se necessario)
-        document.getElementById('omega-cad-acoes').style.display = 'none';
-      }
-    };
-  }
-
-  // ── HTML do painel de acoes (aparece conforme aba do portal) ───
-  U.addSecao(''
-    +'<div id="omega-cad-acoes" style="display:none">'
-
-      +'<div id="omega-cad-contatos">'
+      +'<div id="omega-cad-contatos" style="display:none">'
         +'<div style="font-size:11px;font-weight:bold;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Endereco</div>'
-        +'<div style="font-size:11px;color:#555;margin-bottom:5px">Selecione o estado:</div>'
         +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px">'
           +'<button id="omega-cep-mg" style="padding:8px;background:#1a73e8;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer;font-weight:bold">MG</button>'
           +'<button id="omega-cep-sp" style="padding:8px;background:#1a73e8;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer;font-weight:bold">SP</button>'
@@ -203,46 +136,60 @@
         +'<div id="omega-veiculo-status" style="font-size:11px;min-height:0;border-radius:6px;padding:0"></div>'
       +'</div>'
 
-    +'</div>' // fim omega-cad-acoes
+    +'</div>' // fim omega-aba-acoes
   );
 
-  // ── Detecta aba do portal e mostra acoes corretas ───────────────
-  function atualizarSecao() {
-    var aba = abaAtiva();
+  // ── Troca de abas internas ──────────────────────────────────────
+  unsafeWindow.OmegaCadTab = function(aba) {
+    document.getElementById('omega-aba-cad').style.display   = aba==='cad'   ? 'block' : 'none';
+    document.getElementById('omega-aba-acoes').style.display = aba==='acoes' ? 'block' : 'none';
+    document.getElementById('omega-cad-tab-cad').style.background   = aba==='cad'   ? '#1a73e8' : '#e8f0fe';
+    document.getElementById('omega-cad-tab-cad').style.color        = aba==='cad'   ? '#fff'    : '#1a73e8';
+    document.getElementById('omega-cad-tab-acoes').style.background = aba==='acoes' ? '#1a73e8' : '#e8f0fe';
+    document.getElementById('omega-cad-tab-acoes').style.color      = aba==='acoes' ? '#fff'    : '#1a73e8';
+    if(aba==='acoes') atualizarSecaoAcoes();
+  };
+
+  // ── Detecta aba do portal e atualiza secao Acoes ────────────────
+  function atualizarSecaoAcoes() {
+    var aba = abaPortalAtiva();
     var isMovimentacao = tipoPedido() === 'MovimentacaoFrota';
-    var acoes = document.getElementById('omega-cad-acoes');
-    var contatos = document.getElementById('omega-cad-contatos');
-    var rt = document.getElementById('omega-cad-rt');
+    var cont    = document.getElementById('omega-cad-contatos');
+    var rt      = document.getElementById('omega-cad-rt');
     var veiculo = document.getElementById('omega-cad-veiculo');
 
-    // Nao mostra acoes se estiver na aba Cadastro do painel
-    var cadAberta = document.getElementById('omega-aba-cadastro');
-    if(cadAberta && cadAberta.style.display === 'block') return;
-
     if(isMovimentacao){
-      acoes.style.display   = 'block';
-      contatos.style.display = 'none';
-      rt.style.display       = 'none';
-      veiculo.style.display  = 'block';
+      cont.style.display    = 'none';
+      rt.style.display      = 'none';
+      veiculo.style.display = 'block';
       renderHistoricoVeiculo();
       return;
     }
 
-    var mostrar = (aba==='#contatos' || aba==='#responsavelTecnico' || aba==='#veiculo');
-    acoes.style.display    = mostrar ? 'block' : 'none';
-    contatos.style.display = aba==='#contatos'          ? 'block' : 'none';
-    rt.style.display       = aba==='#responsavelTecnico'? 'block' : 'none';
-    veiculo.style.display  = aba==='#veiculo'           ? 'block' : 'none';
+    cont.style.display    = aba==='#contatos'           ? 'block' : 'none';
+    rt.style.display      = aba==='#responsavelTecnico' ? 'block' : 'none';
+    veiculo.style.display = aba==='#veiculo'            ? 'block' : 'none';
     if(aba==='#veiculo') renderHistoricoVeiculo();
   }
 
   document.querySelectorAll('.nav-tabs .nav-link').forEach(function(link){
-    link.addEventListener('shown.bs.tab', atualizarSecao);
-    link.addEventListener('click', function(){ setTimeout(atualizarSecao, 300); });
+    link.addEventListener('shown.bs.tab', function(){
+      // Se estiver na aba Acoes, atualiza automaticamente
+      if(document.getElementById('omega-aba-acoes').style.display !== 'none'){
+        atualizarSecaoAcoes();
+      }
+    });
+    link.addEventListener('click', function(){
+      setTimeout(function(){
+        if(document.getElementById('omega-aba-acoes').style.display !== 'none'){
+          atualizarSecaoAcoes();
+        }
+      }, 300);
+    });
   });
 
   // ── Importar codigo ─────────────────────────────────────────────
-  function importarCodigo() {
+  document.getElementById('omega-cad-import-btn').addEventListener('click', function(){
     var codigo = document.getElementById('omega-cad-import-input').value.trim();
     var st     = document.getElementById('omega-cad-import-status');
     if(!codigo) return U.box(st, false, 'Cole o codigo gerado pelo Claude.');
@@ -251,57 +198,54 @@
     codigo.split('|').forEach(function(par){
       var idx = par.indexOf('=');
       if(idx !== -1){
-        var chave = par.substring(0, idx).trim();
-        var valor = par.substring(idx + 1).trim();
-        dados[chave] = valor; // guarda mesmo vazio para saber que campo existe
+        dados[par.substring(0,idx).trim()] = par.substring(idx+1).trim();
       }
     });
 
     var tipo = (dados.tipo || '').toUpperCase();
-    if(tipo !== 'CPF' && tipo !== 'CNPJ'){
+    if(tipo !== 'CPF' && tipo !== 'CNPJ')
       return U.box(st, false, 'Codigo invalido. Certifique-se de copiar o codigo completo.');
-    }
 
-    document.getElementById('omega-cad-tipo-badge').textContent = tipo === 'CPF' ? 'Cadastro CPF' : 'Cadastro CNPJ';
-
+    document.getElementById('omega-cad-tipo-badge').textContent = tipo==='CPF' ? 'Cadastro CPF' : 'Cadastro CNPJ';
     document.getElementById('omega-cad-sec-id').style.display   = tipo==='CPF'  ? 'block' : 'none';
     document.getElementById('omega-cad-sec-cont').style.display = tipo==='CNPJ' ? 'block' : 'none';
     document.getElementById('omega-cad-sec-soc').style.display  = tipo==='CNPJ' ? 'block' : 'none';
     document.getElementById('omega-cad-sec-end').style.display  = 'block';
 
-    function set(id, val){ var el=document.getElementById(id); if(el && val) el.value=val; }
+    function set(id, val){ var el=document.getElementById(id); if(el) el.value = val||''; }
     set('omega-cad-identidade',  dados.identidade);
-    set('omega-cad-uf',          dados.uf ? dados.uf.toUpperCase() : '');
-    set('omega-cad-cep',         dados.cep ? dados.cep.replace(/\D/g,'') : '');
+    set('omega-cad-uf',          (dados.uf||'').toUpperCase());
+    set('omega-cad-cep',         (dados.cep||'').replace(/\D/g,''));
     set('omega-cad-logradouro',  dados.logradouro);
     set('omega-cad-numero',      dados.numero);
     set('omega-cad-complemento', dados.complemento);
     set('omega-cad-bairro',      dados.bairro);
-    set('omega-cad-telefone',    dados.telefone ? dados.telefone.replace(/\D/g,'') : '');
+    set('omega-cad-telefone',    (dados.telefone||'').replace(/\D/g,''));
     set('omega-cad-email',       dados.email);
-    set('omega-cad-cpf-socio',   dados.cpf_socio ? dados.cpf_socio.replace(/\D/g,'') : '');
+    set('omega-cad-cpf-socio',   (dados.cpf_socio||'').replace(/\D/g,''));
 
     document.getElementById('omega-cad-campos').style.display = 'block';
     document.getElementById('omega-cad-import-input').value   = '';
     U.box(st, true, 'Dados importados! Confira e clique em Iniciar.');
-  }
+  });
 
-  // ── Iniciar automacao ───────────────────────────────────────────
-  function iniciarAutomacao() {
-    var st    = document.getElementById('omega-cad-iniciar-status');
-    var badge = document.getElementById('omega-cad-tipo-badge').textContent;
-    var tipo  = badge.indexOf('CNPJ') !== -1 ? 'CNPJ' : 'CPF';
+  // ── Botao Iniciar ───────────────────────────────────────────────
+  document.getElementById('omega-cad-iniciar-btn').addEventListener('click', function(e){
+    e.preventDefault();
+    e.stopPropagation();
+    var st = document.getElementById('omega-cad-iniciar-status');
     if(this._omegaClicado) return;
     this._omegaClicado = true;
     var self = this;
-    setTimeout(function(){ self._omegaClicado = false; }, 5000);
+    setTimeout(function(){ self._omegaClicado = false; }, 8000);
+    var tipo = document.getElementById('omega-cad-tipo-badge').textContent.indexOf('CNPJ') !== -1 ? 'CNPJ' : 'CPF';
     U.box(st, true, 'Iniciando...');
-    if(tipo === 'CPF') iniciarAutomacaoCPF(st);
-    else iniciarAutomacaoCNPJ(st);
-  }
+    if(tipo === 'CPF') iniciarCPF(st);
+    else iniciarCNPJ(st);
+  });
 
   // ── AUTOMACAO CPF ───────────────────────────────────────────────
-  function iniciarAutomacaoCPF(st) {
+  function iniciarCPF(st) {
     var identidade  = document.getElementById('omega-cad-identidade').value.trim() || '000000';
     var uf          = document.getElementById('omega-cad-uf').value.trim().toUpperCase();
     var cep         = document.getElementById('omega-cad-cep').value.replace(/\D/g,'');
@@ -325,7 +269,7 @@
   }
 
   // ── AUTOMACAO CNPJ ──────────────────────────────────────────────
-  function iniciarAutomacaoCNPJ(st) {
+  function iniciarCNPJ(st) {
     var cep         = document.getElementById('omega-cad-cep').value.replace(/\D/g,'');
     var logradouro  = document.getElementById('omega-cad-logradouro').value.trim();
     var numero      = document.getElementById('omega-cad-numero').value.trim() || '0';
@@ -373,7 +317,7 @@
     var campoOrgao = document.getElementById('OrgaoEmissor') || document.querySelector('input[name="OrgaoEmissor"]');
     var campoUF    = document.getElementById('UF') || document.querySelector('select[name*="UF"]');
 
-    if(!campoIdent){
+    if(!campoIdent) {
       var tabTransp = document.querySelector('a[href="#transportador"], a[href*="Transportador"]');
       if(tabTransp) tabTransp.click();
       setTimeout(function(){
@@ -387,7 +331,7 @@
     _preencherIdent(campoIdent, campoOrgao, campoUF, identidade, uf, callback);
   }
 
-  function _preencherIdent(campoIdent, campoOrgao, campoUF, identidade, uf, callback){
+  function _preencherIdent(campoIdent, campoOrgao, campoUF, identidade, uf, callback) {
     if(campoIdent){
       campoIdent.removeAttribute('disabled'); campoIdent.removeAttribute('readonly');
       campoIdent.value = identidade;
@@ -405,13 +349,13 @@
         }
       }
     }
-    callback(true);
+    callback();
   }
 
-  // ── Preencher Endereco com dados reais ou aleatorios ────────────
+  // ── Preencher Endereco ──────────────────────────────────────────
   function preencherEnderecoComDados(cep, logradouro, numero, bairro, complemento, st, callback) {
     var btn = document.querySelector('[data-action*="EnderecoPedido/Novo"]');
-    if(!btn){ U.box(st, false, 'Botao Adicionar Endereco nao encontrado.'); callback(); return; }
+    if(!btn){ U.box(st, false, 'Botao Endereco nao encontrado.'); callback(); return; }
     btn.click();
 
     setTimeout(function(){
@@ -421,8 +365,7 @@
 
       if(campoTipo){ campoTipo.value='COR'; jq(campoTipo).trigger('change'); }
 
-      // Se CEP vazio, usa aleatorio MG
-      var cepFinal = cep ? cep.replace(/\D/g,'') : cepAleatorio('MG').replace(/\D/g,'');
+      var cepFinal     = cep ? cep.replace(/\D/g,'') : cepAleatorio('MG').replace(/\D/g,'');
       var temDadosReais = !!(cep && logradouro && logradouro !== '0');
 
       campoCep.value=''; campoCep.focus();
@@ -430,30 +373,29 @@
 
       var i=0;
       function proxChar(){
-        if(i>=cepFinal.length){
+        if(i >= cepFinal.length){
           campoCep.dispatchEvent(new Event('input',{bubbles:true}));
           campoCep.dispatchEvent(new Event('change',{bubbles:true}));
           campoCep.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,key:'Tab',keyCode:9}));
           campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:'Tab',keyCode:9}));
           campoCep.dispatchEvent(new Event('blur',{bubbles:true}));
-          var campoLog=document.getElementById('Logradouro');
-          if(campoLog){ campoLog.focus(); setTimeout(function(){ campoLog.blur(); },100); }
+          var l=document.getElementById('Logradouro');
+          if(l){l.focus();setTimeout(function(){l.blur();},100);}
 
-          var tent=0;
-          var intv=setInterval(function(){
+          var tent=0, intv=setInterval(function(){
             tent++;
-            var l=document.getElementById('Logradouro');
-            if((l&&l.value&&l.value.trim()!=='')||tent>=20){
+            var l2=document.getElementById('Logradouro');
+            if((l2&&l2.value&&l2.value.trim()!=='')||tent>=20){
               clearInterval(intv);
               setTimeout(function(){
-                var l2=document.getElementById('Logradouro');
-                var n2=document.getElementById('Numero');
-                var b2=document.getElementById('Bairro');
-                var c2=document.getElementById('Complemento');
-                if(l2){ l2.value=temDadosReais?logradouro:'0'; jq(l2).trigger('input').trigger('change'); }
-                if(n2){ n2.value=temDadosReais?(numero||'0'):'0'; jq(n2).trigger('input').trigger('change'); }
-                if(b2){ b2.value=temDadosReais?(bairro||'0'):'0'; jq(b2).trigger('input').trigger('change'); }
-                if(c2&&complemento&&temDadosReais){ c2.value=complemento; jq(c2).trigger('input').trigger('change'); }
+                var l3=document.getElementById('Logradouro');
+                var n3=document.getElementById('Numero');
+                var b3=document.getElementById('Bairro');
+                var c3=document.getElementById('Complemento');
+                if(l3){l3.value=temDadosReais?logradouro:'0';jq(l3).trigger('input').trigger('change');}
+                if(n3){n3.value=temDadosReais?(numero||'0'):'0';jq(n3).trigger('input').trigger('change');}
+                if(b3){b3.value=temDadosReais?(bairro||'0'):'0';jq(b3).trigger('input').trigger('change');}
+                if(c3&&complemento&&temDadosReais){c3.value=complemento;jq(c3).trigger('input').trigger('change');}
                 setTimeout(function(){
                   document.querySelectorAll('input[type="checkbox"]').forEach(function(cb){
                     var label=cb.closest('label')||cb.parentElement;
@@ -466,7 +408,7 @@
                     var btnS=document.querySelector('.btn-salvar-endereco');
                     if(btnS&&!btnS._omegaClicado){
                       btnS._omegaClicado=true; btnS.click();
-                      setTimeout(function(){ if(btnS) btnS._omegaClicado=false; },3000);
+                      setTimeout(function(){if(btnS)btnS._omegaClicado=false;},3000);
                     }
                     setTimeout(callback,800);
                   },500);
@@ -476,12 +418,10 @@
           },500);
           return;
         }
-        var ch=cepFinal[i];
-        campoCep.value+=ch;
+        var ch=cepFinal[i]; campoCep.value+=ch;
         campoCep.dispatchEvent(new Event('input',{bubbles:true}));
         campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
-        i++;
-        setTimeout(proxChar,80);
+        i++; setTimeout(proxChar,80);
       }
       proxChar();
     },1200);
@@ -493,7 +433,7 @@
     var btn = document.querySelector('[data-action*="GestorPedido/Novo"],[data-action*="Gestor/Criar"]');
     if(!btn){
       document.querySelectorAll('button,a').forEach(function(el){
-        if(!btn && (el.textContent.toLowerCase().includes('gestor'))) btn=el;
+        if(!btn && el.textContent.toLowerCase().trim()==='adicionar gestor') btn=el;
       });
     }
     if(!btn){ U.box(st,false,'Botao Gestor nao encontrado — adicione manualmente.'); callback(); return; }
@@ -502,23 +442,22 @@
       var campoFunc=document.getElementById('CodigoTipoVinculo');
       var campoCPF =document.getElementById('CpfCnpj');
       if(!campoCPF){ U.box(st,false,'Modal Gestor nao abriu.'); callback(); return; }
-      if(campoFunc){ campoFunc.value='1'; jq(campoFunc).trigger('change'); }
+      if(campoFunc){campoFunc.value='1';jq(campoFunc).trigger('change');}
       setTimeout(function(){
         campoCPF.value=cpfFmt; jq(campoCPF).trigger('input').trigger('change').trigger('blur');
-        var tent=0;
-        var intv=setInterval(function(){
+        var tent=0, intv=setInterval(function(){
           tent++;
           var nome=document.getElementById('Nome');
           var btnS=document.querySelector('.btn-salvar-gestor');
           if((nome&&nome.value&&nome.value.trim()!=='')||tent>15){
             clearInterval(intv);
-            if(!nome||!nome.value){ callback(); return; }
+            if(!nome||!nome.value){callback();return;}
             var cb=document.getElementById('isDeclaracaoIdoneoArtigo2');
-            if(cb){ jq(cb).iCheck('check'); cb.checked=true; jq(cb).trigger('ifChecked').trigger('change'); }
+            if(cb){jq(cb).iCheck('check');cb.checked=true;jq(cb).trigger('ifChecked').trigger('change');}
             setTimeout(function(){
               if(btnS&&!btnS._omegaClicado){
                 btnS._omegaClicado=true; btnS.removeAttribute('disabled'); btnS.click();
-                setTimeout(function(){ if(btnS) btnS._omegaClicado=false; },3000);
+                setTimeout(function(){if(btnS)btnS._omegaClicado=false;},3000);
               }
               setTimeout(callback,800);
             },600);
@@ -533,27 +472,26 @@
 
   function adicionarRT(st, callback) {
     var btn=document.querySelector('[data-action*="ResponsavelTecnico/Criar"]');
-    if(!btn){ callback(); return; }
+    if(!btn){callback();return;}
     btn.click();
     setTimeout(function(){
       var cpf=document.getElementById('Cpf');
-      if(!cpf){ callback(); return; }
+      if(!cpf){callback();return;}
       cpf.value=CPF_RT; jq(cpf).trigger('input').trigger('change').trigger('blur');
-      var tent=0;
-      var intv=setInterval(function(){
+      var tent=0, intv=setInterval(function(){
         tent++;
         var nome=document.getElementById('Nome');
         var btnS=document.getElementById('btnSalvar');
         if((nome&&nome.value&&nome.value.trim()!=='')||tent>15){
           clearInterval(intv);
-          if(!nome||!nome.value){ callback(); return; }
-          function marcarICheck(cb){ if(!cb)return; jq(cb).iCheck('check'); cb.checked=true; jq(cb).trigger('ifChecked').trigger('change'); }
+          if(!nome||!nome.value){callback();return;}
+          function marcarICheck(cb){if(!cb)return;jq(cb).iCheck('check');cb.checked=true;jq(cb).trigger('ifChecked').trigger('change');}
           marcarICheck(document.getElementById('FoiResponsavelTecnico'));
           marcarICheck(document.getElementById('isDeclaracaoIdoneoArtigo2'));
           setTimeout(function(){
             if(btnS&&!btnS._omegaClicado){
               btnS._omegaClicado=true; btnS.removeAttribute('disabled'); btnS.click();
-              setTimeout(function(){ if(btnS) btnS._omegaClicado=false; },3000);
+              setTimeout(function(){if(btnS)btnS._omegaClicado=false;},3000);
             }
             setTimeout(callback,800);
           },600);
@@ -565,30 +503,27 @@
   // ── Geradores aleatorios ─────────────────────────────────────────
   function gerarTelefone(){
     var ddds=['11','21','31','41','51'];
-    var ddd=ddds[Math.floor(Math.random()*ddds.length)];
-    var num='9';
-    for(var i=0;i<8;i++) num+=Math.floor(Math.random()*10);
-    return ddd+num;
+    var n='9'; for(var i=0;i<8;i++) n+=Math.floor(Math.random()*10);
+    return ddds[Math.floor(Math.random()*ddds.length)]+n;
   }
   function gerarEmail(){
-    var chars='abcdefghijklmnopqrstuvwxyz0123456789';
-    var s='';
-    for(var i=0;i<12;i++) s+=chars[Math.floor(Math.random()*chars.length)];
+    var c='abcdefghijklmnopqrstuvwxyz0123456789',s='';
+    for(var i=0;i<12;i++) s+=c[Math.floor(Math.random()*c.length)];
     return s+'@yahoo.com';
   }
 
-  // ── CEP (aba Acoes) ─────────────────────────────────────────────
+  // ── CEP manual (aba Acoes) ──────────────────────────────────────
   function preencherEndereco(estado) {
     var st=document.getElementById('omega-cep-status');
     var cep=cepAleatorio(estado);
     var btn=document.querySelector('[data-action*="EnderecoPedido/Novo"]');
-    if(!btn) return U.box(st,false,'Botao Adicionar Endereco nao encontrado.');
+    if(!btn)return U.box(st,false,'Botao Endereco nao encontrado.');
     U.box(st,true,'Abrindo formulario...');
     btn.click();
     setTimeout(function(){
       var campoCep=document.getElementById('Cep');
       var campoTipo=document.getElementById('CodigoTipoEndereco');
-      if(!campoCep) return U.box(st,false,'Modal nao abriu.');
+      if(!campoCep)return U.box(st,false,'Modal nao abriu.');
       if(campoTipo){campoTipo.value='COR';jq(campoTipo).trigger('change');}
       var cepN=cep.replace(/\D/g,'');
       campoCep.value=''; campoCep.focus();
@@ -603,9 +538,8 @@
           campoCep.dispatchEvent(new Event('blur',{bubbles:true}));
           var l=document.getElementById('Logradouro');
           if(l){l.focus();setTimeout(function(){l.blur();},100);}
-          U.box(st,true,'CEP '+cep+' ('+estado+') inserido...');
-          var tent=0;
-          var intv=setInterval(function(){
+          U.box(st,true,'CEP '+cep+' inserido...');
+          var tent=0, intv=setInterval(function(){
             tent++;
             var l2=document.getElementById('Logradouro');
             if((l2&&l2.value&&l2.value.trim()!=='')||tent>=20){
@@ -628,7 +562,7 @@
                     if(btnS&&!btnS._omegaClicado){
                       btnS._omegaClicado=true; btnS.click();
                       U.box(st,true,'Endereco ('+estado+'/'+cep+') salvo!');
-                      setTimeout(function(){ if(btnS) btnS._omegaClicado=false; },3000);
+                      setTimeout(function(){if(btnS)btnS._omegaClicado=false;},3000);
                     }
                   },600);
                 },500);
@@ -650,7 +584,7 @@
   document.getElementById('omega-cep-sp').addEventListener('click',function(){preencherEndereco('SP');});
   document.getElementById('omega-cep-rj').addEventListener('click',function(){preencherEndereco('RJ');});
 
-  // ── Contato (aba Acoes) ─────────────────────────────────────────
+  // ── Contato manual (aba Acoes) ──────────────────────────────────
   document.getElementById('omega-contato-btn').addEventListener('click',function(){
     var st=document.getElementById('omega-contato-status');
     if(tipoCadastro()==='CPF'){U.box(st,true,'CPF — contatos ja preenchidos pelo portal.');return;}
@@ -661,7 +595,7 @@
         var email=gerarEmail();
         adicionarContato('4',email,function(ok2){
           if(ok2) U.box(st,true,'Tel + email adicionados!<br><span style="font-size:10px">'+email+'</span>');
-          else U.box(st,false,'Tel ok, erro no email.');
+          else U.box(st,false,'Telefone ok, erro no email.');
         });
       },1500);
     });
@@ -703,7 +637,7 @@
     },800);
   }
 
-  // ── RT (aba Acoes) ──────────────────────────────────────────────
+  // ── RT manual (aba Acoes) ───────────────────────────────────────
   document.getElementById('omega-rt-btn').addEventListener('click',function(){
     var st=document.getElementById('omega-rt-status');
     adicionarRT(st,function(){U.box(st,true,'RT adicionado! CPF: '+CPF_RT);});
@@ -737,13 +671,12 @@
   }
 
   function monitorarPopupsVeiculo(st,callback){
-    var tent=0;
-    var intv=setInterval(function(){
+    var tent=0,intv=setInterval(function(){
       tent++;
       var bbSim=document.querySelector('.bootbox-confirm button[data-bb-handler="confirm"]');
       if(bbSim&&bbSim.offsetParent!==null){
         clearInterval(intv);
-        U.box(st,true,'Popup detectado! Confirmando em 3s...');
+        U.box(st,true,'Popup! Confirmando em 3s...');
         setTimeout(function(){
           bbSim.click();
           setTimeout(function(){
@@ -826,19 +759,12 @@
       proxChar();
     }
 
-    if(isMovimentacao&&popupAberto&&ehPopupVeiculo){U.box(st,true,'Preenchendo veiculo...');preencher();}
+    if(isMovimentacao&&popupAberto&&ehPopupVeiculo){U.box(st,true,'Preenchendo...');preencher();}
     else{
       var btnAdd=document.querySelector('[data-action*="VeiculoPedido/Novo"]');
       if(!btnAdd)return U.box(st,false,'Botao Adicionar Veiculo nao encontrado.');
       btnAdd.click(); setTimeout(preencher,1500);
     }
   };
-
-  // ── Init: injeta aba e hook apos arrendamento.js carregar ───────
-  setTimeout(function(){
-    injetarAbaCadastro();
-    hookOmegaAba();
-    atualizarSecao();
-  }, 300);
 
 })();
