@@ -22,6 +22,12 @@
       +'<input type="file" id="omega-file-input" accept=".pdf,image/*" style="display:none">'
       +'<div id="omega-extract-status" style="font-size:11px;min-height:0;border-radius:6px;padding:0;margin-bottom:6px"></div>'
 
+      // Importacao manual
+      +'<div style="display:flex;gap:6px;margin-bottom:10px">'
+        +'<input id="omega-import-input" placeholder="Cole o codigo OMEGA aqui" style="flex:1;padding:7px;border:1px solid #ddd;border-radius:7px;font-size:11px;box-sizing:border-box">'
+        +'<button id="omega-import-btn" style="padding:7px 10px;background:#f1a9a0;color:#fff;border:none;border-radius:7px;font-size:11px;cursor:pointer;font-weight:bold;white-space:nowrap">Importar</button>'
+      +'</div>'
+
       // Campos extraidos
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">'
         +'<div>'
@@ -340,6 +346,31 @@
     marcar(c1);marcar(c2);
     if(c1.checked&&c2.checked)U.box(st,true,'Declaracoes marcadas!');
     else U.box(st,false,'Erro ao marcar.');
+  });
+
+  // ── Importacao manual via codigo OMEGA ──────────────────────────
+  document.getElementById('omega-import-btn').addEventListener('click', function(){
+    var codigo = document.getElementById('omega-import-input').value.trim();
+    var exSt   = document.getElementById('omega-extract-status');
+    if(!codigo) return U.box(exSt, false, 'Cole o codigo de importacao.');
+
+    var dados = {};
+    codigo.split('|').forEach(function(par){
+      var partes = par.split('=');
+      if(partes.length === 2) dados[partes[0].trim()] = partes[1].trim();
+    });
+
+    if(!dados.placa && !dados.renavam){
+      return U.box(exSt, false, 'Codigo invalido. Use o formato: placa=XXX|renavam=XXX|cpf=XXX|nome=XXX');
+    }
+
+    if(dados.cpf)    { document.getElementById('antt-cpf-input').value   = dados.cpf;              document.getElementById('antt-cpf-input').dispatchEvent(new Event('input')); }
+    if(dados.nome)   { document.getElementById('antt-nome-input').value  = dados.nome.toUpperCase(); document.getElementById('antt-nome-input').dispatchEvent(new Event('input')); }
+    if(dados.placa)  { document.getElementById('antt-placa-input').value = dados.placa.toUpperCase(); document.getElementById('antt-placa-input').dispatchEvent(new Event('input')); }
+    if(dados.renavam){ document.getElementById('antt-renavam-input').value = dados.renavam; }
+
+    document.getElementById('omega-import-input').value = '';
+    U.box(exSt, true, 'Dados importados! Revise e clique nos botoes.');
   });
 
   inp.focus();
