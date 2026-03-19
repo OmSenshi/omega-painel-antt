@@ -73,6 +73,12 @@
       +'<div id="antt-check-status" style="font-size:11px;min-height:0;border-radius:6px;padding:0"></div>'
     +'</div>'
 
+    // ── ABA HISTORICO ─────────────────────────────────────────────
+    +'<div id="omega-aba-historico" style="display:none">'
+      +'<div id="omega-historico-lista" style="max-height:220px;overflow-y:auto"></div>'
+      +'<div id="omega-historico-vazio" style="font-size:11px;color:#aaa;text-align:center;padding:20px 0">Nenhum registro nas ultimas 24h</div>'
+    +'</div>'
+
     // ── Config API (rodape) ───────────────────────────────────────
     +'<hr style="margin:10px 0;border:none;border-top:1px solid #eee">'
     +'<div style="display:flex;align-items:center;gap:6px">'
@@ -83,12 +89,17 @@
 
   // ── Troca de abas ────────────────────────────────────────────────
   unsafeWindow.OmegaAba = function(aba) {
-    document.getElementById('omega-aba-crlv').style.display     = aba==='crlv'     ? 'block' : 'none';
-    document.getElementById('omega-aba-contrato').style.display = aba==='contrato' ? 'block' : 'none';
-    document.getElementById('aba-crlv').style.background     = aba==='crlv'     ? '#1a73e8' : '#e8f0fe';
-    document.getElementById('aba-crlv').style.color           = aba==='crlv'     ? '#fff'    : '#1a73e8';
-    document.getElementById('aba-contrato').style.background  = aba==='contrato' ? '#1a73e8' : '#e8f0fe';
-    document.getElementById('aba-contrato').style.color       = aba==='contrato' ? '#fff'    : '#1a73e8';
+    document.getElementById('omega-aba-crlv').style.display      = aba==='crlv'      ? 'block' : 'none';
+    document.getElementById('omega-aba-contrato').style.display  = aba==='contrato'  ? 'block' : 'none';
+    document.getElementById('omega-aba-historico').style.display = aba==='historico' ? 'block' : 'none';
+    ['crlv','contrato','historico'].forEach(function(a){
+      var btn = document.getElementById('aba-'+a);
+      if(btn){
+        btn.style.background = a===aba ? '#1a73e8' : '#e8f0fe';
+        btn.style.color      = a===aba ? '#fff'    : '#1a73e8';
+      }
+    });
+    if(aba==='historico') renderHistorico();
   };
 
   // ── Config API ───────────────────────────────────────────────────
@@ -154,6 +165,7 @@
         if(dados.renavam) {
           document.getElementById('antt-renavam-input').value = dados.renavam;
         }
+        adicionarHistorico(dados);
         U.box(exSt, true, 'Dados extraidos! Revise e clique nos botoes.');
       },
       function(erro) {
@@ -348,6 +360,81 @@
     else U.box(st,false,'Erro ao marcar.');
   });
 
+  // ── Historico de placas (24h) ───────────────────────────────────
+  var HIST_KEY = 'omega_historico';
+  var HIST_TTL = 24 * 60 * 60 * 1000; // 24h em ms
+
+  function carregarHistorico() {
+    try {
+      var raw = GM_getValue ? GM_getValue(HIST_KEY,'[]') : localStorage.getItem(HIST_KEY)||'[]';
+      var lista = JSON.parse(raw);
+      var agora = Date.now();
+      // Remove entradas com mais de 24h
+      lista = lista.filter(function(item){ return (agora - item.ts) < HIST_TTL; });
+      return lista;
+    } catch(e){ return []; }
+  }
+
+  function salvarHistorico(lista) {
+    var raw = JSON.stringify(lista);
+    if(GM_setValue) GM_setValue(HIST_KEY, raw);
+    else localStorage.setItem(HIST_KEY, raw);
+  }
+
+  function adicionarHistorico(dados) {
+    var lista = carregarHistorico();
+    // Evita duplicata da mesma placa — atualiza o timestamp
+    lista = lista.filter(function(item){ return item.placa !== dados.placa; });
+    lista.unshift({ placa: dados.placa, renavam: dados.renavam, cpf: dados.cpf, nome: dados.nome, ts: Date.now() });
+    salvarHistorico(lista);
+  }
+
+  function tempoRelativo(ts) {
+    var diff = Date.now() - ts;
+    var min  = Math.floor(diff / 60000);
+    var hrs  = Math.floor(diff / 3600000);
+    if(min < 1)  return 'agora';
+    if(min < 60) return 'ha ' + min + 'min';
+    return 'ha ' + hrs + 'h';
+  }
+
+  function renderHistorico() {
+    var lista  = carregarHistorico();
+    var el     = document.getElementById('omega-historico-lista');
+    var vazio  = document.getElementById('omega-historico-vazio');
+    if(!el) return;
+    if(lista.length === 0) {
+      el.innerHTML = '';
+      if(vazio) vazio.style.display = 'block';
+      return;
+    }
+    if(vazio) vazio.style.display = 'none';
+    el.innerHTML = lista.map(function(item, idx){
+      var placa = item.placa;
+      var display = /^[A-Z]{3}[0-9]{4}$/.test(placa) ? placa.substring(0,3)+'-'+placa.substring(3) : placa;
+      var tempo = tempoRelativo(item.ts);
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f0f0f0">'
+        +'<div>'
+          +'<div style="font-size:12px;font-weight:bold;color:#333">'+display+'</div>'
+          +'<div style="font-size:10px;color:#aaa">'+tempo+'</div>'
+        +'</div>'
+        +'<button onclick="OmegaImportarHistorico('+idx+')" style="padding:5px 10px;background:#1a73e8;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer">Usar</button>'
+      +'</div>';
+    }).join('');
+  }
+
+  unsafeWindow.OmegaImportarHistorico = function(idx) {
+    var lista = carregarHistorico();
+    var item  = lista[idx];
+    if(!item) return;
+    if(item.cpf)    { document.getElementById('antt-cpf-input').value    = item.cpf;               document.getElementById('antt-cpf-input').dispatchEvent(new Event('input')); }
+    if(item.nome)   { document.getElementById('antt-nome-input').value   = item.nome.toUpperCase(); document.getElementById('antt-nome-input').dispatchEvent(new Event('input')); }
+    if(item.placa)  { document.getElementById('antt-placa-input').value  = item.placa.toUpperCase(); document.getElementById('antt-placa-input').dispatchEvent(new Event('input')); }
+    if(item.renavam){ document.getElementById('antt-renavam-input').value = item.renavam; }
+    OmegaAba('crlv');
+    U.box(document.getElementById('omega-extract-status'), true, 'Dados importados do historico!');
+  };
+
   // ── Importacao manual via codigo OMEGA ──────────────────────────
   document.getElementById('omega-import-btn').addEventListener('click', function(){
     var codigo = document.getElementById('omega-import-input').value.trim();
@@ -369,6 +456,7 @@
     if(dados.placa)  { document.getElementById('antt-placa-input').value = dados.placa.toUpperCase(); document.getElementById('antt-placa-input').dispatchEvent(new Event('input')); }
     if(dados.renavam){ document.getElementById('antt-renavam-input').value = dados.renavam; }
 
+    adicionarHistorico(dados);
     document.getElementById('omega-import-input').value = '';
     U.box(exSt, true, 'Dados importados! Revise e clique nos botoes.');
   });
