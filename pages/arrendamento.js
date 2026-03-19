@@ -137,11 +137,11 @@
       if(ap){
         // Seleciona no dropdown PRIMEIRO, antes de substituir textos
         var sel=document.getElementById('CPFCNPJArrendanteTransportador'), selecionou=false;
+        // Seleciona a primeira option valida (nao vazia) do dropdown
+        var sel=document.getElementById('CPFCNPJArrendanteTransportador'), selecionou=false;
         if(sel){
           for(var i=0;i<sel.options.length;i++){
-            // Value do portal vem com aspas extras ex: '"35698229000126"' — remove tudo que nao e numero
-            var optVal=sel.options[i].value.replace(/\D/g,'');
-            if(optVal===raw){
+            if(sel.options[i].value && sel.options[i].value.replace(/\D/g,'') !== ''){
               sel.selectedIndex=i;
               sel.dispatchEvent(new Event('change',{bubbles:true}));
               if(jq) jq(sel).trigger('change');
@@ -149,11 +149,10 @@
               break;
             }
           }
-          // Se nao encontrou por value, tenta pelo texto formatado
+          // Se nao encontrou por value, tenta pelo texto
           if(!selecionou){
-            var nfBusca=U.fAuto(raw);
             for(var i=0;i<sel.options.length;i++){
-              if(sel.options[i].text.replace(/\D/g,'')===raw){
+              if(sel.options[i].text && sel.options[i].text !== 'Selecione'){
                 sel.selectedIndex=i;
                 sel.dispatchEvent(new Event('change',{bubbles:true}));
                 if(jq) jq(sel).trigger('change');
