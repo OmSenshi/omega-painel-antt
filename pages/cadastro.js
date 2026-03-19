@@ -265,21 +265,33 @@
 
   // ── Transportador CPF ───────────────────────────────────────────
   function preencherTransportadorCPF(identidade, uf, callback) {
-    var campoIdent=document.getElementById('Identidade')||document.querySelector('input[name="Identidade"]');
-    var campoOrgao=document.getElementById('OrgaoEmissor')||document.querySelector('input[name="OrgaoEmissor"]');
-    var campoUF   =document.getElementById('UF')||document.querySelector('select[name*="UF"]');
-    if(!campoIdent){
-      var tabT=document.querySelector('a[href="#transportador"],a[href*="Transportador"]');
-      if(tabT)tabT.click();
-      setTimeout(function(){
-        campoIdent=document.getElementById('Identidade')||document.querySelector('input[name="Identidade"]');
-        campoOrgao=document.getElementById('OrgaoEmissor')||document.querySelector('input[name="OrgaoEmissor"]');
-        campoUF   =document.getElementById('UF')||document.querySelector('select[name*="UF"]');
-        _fillIdent(campoIdent,campoOrgao,campoUF,identidade,uf,callback);
-      },800);
-      return;
+    // Busca campos com varios seletores possiveis — nunca clica em links de navegacao
+    var campoIdent = document.getElementById('Identidade')
+      || document.querySelector('input[name="Identidade"]')
+      || document.querySelector('input[id*="dentidade"]');
+    var campoOrgao = document.getElementById('OrgaoEmissor')
+      || document.querySelector('input[name="OrgaoEmissor"]')
+      || document.querySelector('input[id*="rgao"]');
+    var campoUF    = document.getElementById('UF')
+      || document.querySelector('select[name="UF"]')
+      || document.querySelector('select[id="UF"]');
+
+    // Tenta clicar na aba interna do pedido (nao no menu lateral)
+    // Apenas links que sao abas bootstrap dentro do formulario do pedido
+    if(!campoIdent) {
+      var tabInterna = document.querySelector('.nav-tabs a[href="#transportador"], .nav-tabs a[href="#Transportador"]');
+      if(tabInterna) {
+        tabInterna.click();
+        setTimeout(function(){
+          campoIdent = document.getElementById('Identidade') || document.querySelector('input[name="Identidade"]');
+          campoOrgao = document.getElementById('OrgaoEmissor') || document.querySelector('input[name="OrgaoEmissor"]');
+          campoUF    = document.getElementById('UF') || document.querySelector('select[name="UF"]');
+          _fillIdent(campoIdent, campoOrgao, campoUF, identidade, uf, callback);
+        }, 800);
+        return;
+      }
     }
-    _fillIdent(campoIdent,campoOrgao,campoUF,identidade,uf,callback);
+    _fillIdent(campoIdent, campoOrgao, campoUF, identidade, uf, callback);
   }
 
   function _fillIdent(ci,co,cu,identidade,uf,cb){
