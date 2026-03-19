@@ -155,25 +155,23 @@
         tot=r1.total+r2.total;
       }
 
-      // 2) Agora a option ja tem o novo CNPJ como value — seleciona ela
+      // 2) Seleciona no dropdown — pega o value exato da option que bate com o novo CNPJ
       var sel=document.getElementById('CPFCNPJArrendanteTransportador'), selecionou=false;
-      if(sel){
+      if(sel && jq){
         for(var i=0;i<sel.options.length;i++){
+          // Compara só os numeros do value/text com o raw
           if(sel.options[i].value.replace(/\D/g,'')===raw || sel.options[i].text.replace(/\D/g,'')===raw){
-            sel.selectedIndex=i;
-            sel.dispatchEvent(new Event('change',{bubbles:true}));
-            if(jq) jq(sel).trigger('change');
+            // Usa o value EXATO da option (incluindo aspas se houver)
+            jq(sel).val(sel.options[i].value).trigger('change');
             selecionou=true;
             break;
           }
         }
-        // Fallback: seleciona a primeira option nao vazia
+        // Fallback: primeira option nao vazia
         if(!selecionou){
           for(var i=0;i<sel.options.length;i++){
             if(sel.options[i].text && sel.options[i].text!=='Selecione'){
-              sel.selectedIndex=i;
-              sel.dispatchEvent(new Event('change',{bubbles:true}));
-              if(jq) jq(sel).trigger('change');
+              jq(sel).val(sel.options[i].value).trigger('change');
               selecionou=true;
               break;
             }
