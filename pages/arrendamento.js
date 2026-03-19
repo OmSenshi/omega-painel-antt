@@ -232,16 +232,33 @@
             },
             success: function(resp){
               if(resp && resp.success === true){
-                // Habilita campos de data
-                var di = document.getElementById('DataInicio');
-                var df = document.getElementById('DataFim');
+                // Habilita campo CPF arrendatario
                 var ca = document.getElementById('CPFCNPJArrendatario');
-                if(di) di.removeAttribute('disabled');
-                if(df) df.removeAttribute('disabled');
                 if(ca) ca.removeAttribute('disabled');
+
+                // Habilita campos de data pelo DateTimePicker — igual o portal faz
+                var diWrapper = jqRef('#DataInicio');
+                var dfWrapper = jqRef('#DataFim');
+                var diInput = diWrapper.find('input').first();
+                var dfInput = dfWrapper.find('input').first();
+
+                diInput.removeAttr('disabled').removeAttr('readonly');
+                dfInput.removeAttr('disabled').removeAttr('readonly');
+
+                // Inicializa o DateTimePicker se ainda nao estiver ativo
+                try {
+                  if(!diWrapper.data('DateTimePicker')) diWrapper.datetimepicker({format:'DD/MM/YYYY'});
+                  if(!dfWrapper.data('DateTimePicker')) dfWrapper.datetimepicker({format:'DD/MM/YYYY'});
+                } catch(e){}
+
+                // Habilita o icone do calendario
+                jqRef('#DataInicioIcon').css('pointer-events','auto').css('opacity','1');
+                jqRef('#DataFimIcon').css('pointer-events','auto').css('opacity','1');
+
                 // Dispara change no select para o portal atualizar campos dependentes
                 var sel = document.getElementById('CPFCNPJArrendanteTransportador');
                 if(sel) jqRef(sel).trigger('change');
+
                 uRef.box(stRef,true,'Veiculo verificado! Placa <b>'+placaRef+'</b> OK');
               } else {
                 var msg = (resp && resp.ErrorMessage) ? resp.ErrorMessage : 'Veiculo nao encontrado ou nao pertence ao transportador.';
