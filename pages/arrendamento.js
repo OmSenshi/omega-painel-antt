@@ -155,6 +155,16 @@
         tot=r1.total+r2.total;
       }
 
+      // 1b) Atualiza NomesTransportador e atributo cpfcnpjs explicitamente
+      // (substituirTudo nao alcanca JSON dentro de atributos corretamente)
+      var novoJson = JSON.stringify([{"CpfCnpj":raw,"Nome":nn||""}]);
+      var nt2 = document.getElementById('NomesTransportador');
+      if(nt2){ nt2.value = novoJson; nt2.setAttribute('value', novoJson); }
+      ['Placa','Renavam','DataInicio','DataFim'].forEach(function(id){
+        var el = document.getElementById(id);
+        if(el && el.getAttribute('cpfcnpjs')) el.setAttribute('cpfcnpjs', novoJson);
+      });
+
       // 2) Seleciona no dropdown — pega o value exato da option que bate com o novo CNPJ
       var sel=document.getElementById('CPFCNPJArrendanteTransportador'), selecionou=false;
       if(sel && jq){
