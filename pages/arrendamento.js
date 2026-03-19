@@ -419,10 +419,20 @@
           +'<div style="font-size:12px;font-weight:bold;color:#333">'+display+'</div>'
           +'<div style="font-size:10px;color:#aaa">'+tempo+'</div>'
         +'</div>'
-        +'<button onclick="OmegaImportarHistorico('+idx+')" style="padding:5px 10px;background:#1a73e8;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer">Usar</button>'
+        +'<div style="display:flex;gap:4px">'
+          +'<button onclick="OmegaImportarHistorico('+idx+')" style="padding:5px 10px;background:#1a73e8;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer">Usar</button>'
+          +'<button onclick="OmegaRemoverHistorico('+idx+')" style="padding:5px 8px;background:#fce8e6;color:#c0392b;border:none;border-radius:6px;font-size:11px;cursor:pointer">x</button>'
+        +'</div>'
       +'</div>';
     }).join('');
   }
+
+  unsafeWindow.OmegaRemoverHistorico = function(idx) {
+    var lista = carregarHistorico();
+    lista.splice(idx, 1);
+    salvarHistorico(lista);
+    renderHistorico();
+  };
 
   unsafeWindow.OmegaImportarHistorico = function(idx) {
     var lista = carregarHistorico();
