@@ -260,22 +260,52 @@
   }
 
   // ── Transportador CPF ───────────────────────────────────────────
+  // CORRIGIDO v11.1: seletor restrito a .nav-tabs para nunca capturar
+  // links de navegacao do menu lateral (evita redirect para /Transportador/Cadastro)
   function preencherTransportadorCPF(identidade, uf, callback) {
-    var campoIdent=document.getElementById('Identidade')||document.querySelector('input[name="Identidade"]');
-    var campoOrgao=document.getElementById('OrgaoEmissor')||document.querySelector('input[name="OrgaoEmissor"]');
-    var campoUF   =document.getElementById('UF')||document.querySelector('select[name*="UF"]');
+    var campoIdent = document.getElementById('Identidade')
+                  || document.querySelector('input[name="Identidade"]');
+    var campoOrgao = document.getElementById('OrgaoEmissor')
+                  || document.querySelector('input[name="OrgaoEmissor"]');
+    var campoUF    = document.getElementById('UF')
+                  || document.querySelector('select[name*="UF"]');
+
     if(!campoIdent){
-      var tabT=document.querySelector('a[href="#transportador"],a[href*="Transportador"]');
-      if(tabT)tabT.click();
+      // Tenta ativar a aba interna do formulario sem sair da pagina atual.
+      // O seletor e propositalmente restrito a .nav-tabs para nunca pegar
+      // links do menu lateral que contenham "Transportador" na URL.
+      var tabT = document.querySelector(
+        '.nav-tabs a[href="#transportador"], ' +
+        '.nav-tabs a[href="#dadosTransportador"], ' +
+        '.nav-tabs a[href="#transportadorDados"]'
+      );
+      if(tabT){
+        tabT.click();
+      } else {
+        // Fallback: procura qualquer tab interna pelo texto, sem usar href
+        document.querySelectorAll('.nav-tabs .nav-link, .nav-tabs li a').forEach(function(el){
+          if(!tabT){
+            var txt = (el.textContent||'').toLowerCase().trim();
+            if(txt === 'transportador' || txt === 'dados do transportador'){
+              tabT = el;
+            }
+          }
+        });
+        if(tabT) tabT.click();
+      }
+
       setTimeout(function(){
-        campoIdent=document.getElementById('Identidade')||document.querySelector('input[name="Identidade"]');
-        campoOrgao=document.getElementById('OrgaoEmissor')||document.querySelector('input[name="OrgaoEmissor"]');
-        campoUF   =document.getElementById('UF')||document.querySelector('select[name*="UF"]');
-        _fillIdent(campoIdent,campoOrgao,campoUF,identidade,uf,callback);
-      },800);
+        campoIdent = document.getElementById('Identidade')
+                  || document.querySelector('input[name="Identidade"]');
+        campoOrgao = document.getElementById('OrgaoEmissor')
+                  || document.querySelector('input[name="OrgaoEmissor"]');
+        campoUF    = document.getElementById('UF')
+                  || document.querySelector('select[name*="UF"]');
+        _fillIdent(campoIdent, campoOrgao, campoUF, identidade, uf, callback);
+      }, 800);
       return;
     }
-    _fillIdent(campoIdent,campoOrgao,campoUF,identidade,uf,callback);
+    _fillIdent(campoIdent, campoOrgao, campoUF, identidade, uf, callback);
   }
 
   function _fillIdent(ci,co,cu,identidade,uf,cb){
