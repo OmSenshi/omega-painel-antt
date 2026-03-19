@@ -169,7 +169,12 @@
         c.value = contatoVal; jq(c).trigger('input').trigger('change');
         setTimeout(function(){
           var s = document.querySelector('.btn-salvar-contato');
-          if(s){ s.click(); callback(true); } else callback(false);
+          if(s && !s._omegaClicado){
+            s._omegaClicado = true;
+            s.click();
+            setTimeout(function(){ if(s) s._omegaClicado = false; }, 3000);
+            callback(true);
+          } else if(!s) callback(false);
         }, 400);
       }, 300);
     }, 800);
@@ -202,8 +207,15 @@
           marcarICheck(document.getElementById('FoiResponsavelTecnico'));
           marcarICheck(document.getElementById('isDeclaracaoIdoneoArtigo2'));
           setTimeout(function(){
-            if(btnS){ btnS.removeAttribute('disabled'); btnS.click(); U.box(st, true, 'RT adicionado! CPF: '+CPF_RT); }
-            else U.box(st, false, 'Botao Salvar nao encontrado.');
+            if(btnS && !btnS._omegaClicado){
+              btnS._omegaClicado = true;
+              btnS.removeAttribute('disabled');
+              btnS.click();
+              U.box(st, true, 'RT adicionado! CPF: '+CPF_RT);
+              setTimeout(function(){ if(btnS) btnS._omegaClicado = false; }, 3000);
+            } else if(!btnS) {
+              U.box(st, false, 'Botao Salvar nao encontrado.');
+            }
           }, 600);
         }
       }, 500);
