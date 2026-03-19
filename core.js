@@ -5,20 +5,51 @@
   window.OmegaJQ  = unsafeWindow.jQuery || unsafeWindow.$;
   window.OmegaMom = unsafeWindow.moment;
 
-  // ── Painel principal ────────────────────────────────────────────────
-  var s=document.createElement('div');
-  s.id='antt-helper';
-  s.style.cssText='position:fixed;top:20px;right:20px;z-index:999999;background:#fff;border:2px solid #1a73e8;border-radius:12px;padding:16px;box-shadow:0 4px 20px rgba(0,0,0,0.2);font-family:Arial,sans-serif;width:420px;';
-  s.innerHTML=''
-    +'<div style="text-align:center;margin-bottom:2px">'
-    +'<div style="font-size:20px;font-weight:bold;color:#1a73e8;letter-spacing:2px">OMEGA</div>'
-    +'<div style="font-size:10px;color:#888;letter-spacing:1px">Painel</div>'
+  // ── Painel principal ────────────────────────────────────────────
+  var s = document.createElement('div');
+  s.id = 'antt-helper';
+  s.style.cssText = 'position:fixed;top:20px;right:20px;z-index:999999;background:#fff;border:2px solid #1a73e8;border-radius:12px;padding:14px;box-shadow:0 4px 20px rgba(0,0,0,0.2);font-family:Arial,sans-serif;width:440px;';
+  s.innerHTML = ''
+    +'<div style="text-align:center;margin-bottom:8px">'
+      +'<div style="font-size:20px;font-weight:bold;color:#1a73e8;letter-spacing:2px">OMEGA</div>'
+      +'<div style="font-size:10px;color:#888;letter-spacing:1px">Painel</div>'
     +'</div>'
-    +'<span onclick=document.getElementById("antt-helper").remove() style="position:absolute;top:12px;right:14px;cursor:pointer;font-size:16px;color:#aaa">✕</span>'
-    +'<div id="omega-content"></div>';
+    +'<span onclick="document.getElementById(\'antt-helper\').remove()" style="position:absolute;top:12px;right:14px;cursor:pointer;font-size:16px;color:#aaa">✕</span>'
+    // Abas unificadas — preenchidas pelos modulos
+    +'<div id="omega-tabs" style="display:grid;gap:4px;margin-bottom:10px"></div>'
+    // Conteudo das abas
+    +'<div id="omega-content"></div>'
+    // Rodape API
+    +'<hr style="margin:10px 0;border:none;border-top:1px solid #eee">'
+    +'<div style="display:flex;align-items:center;gap:6px">'
+      +'<span style="font-size:10px;color:#aaa;flex:1" id="omega-api-status"></span>'
+      +'<button onclick="OmegaConfigAPI()" style="padding:4px 8px;background:#f1f3f4;border:none;border-radius:5px;font-size:10px;color:#555;cursor:pointer">Chave API</button>'
+    +'</div>';
   document.body.appendChild(s);
 
-  // ── Utilitários globais ─────────────────────────────────────────────
+  // ── Sistema de abas unificado ───────────────────────────────────
+  // Cada modulo registra suas abas via OmegaUtils.registrarAba(id, label, buildFn)
+  // buildFn() deve retornar o HTML da aba
+  window._OmegaAbas = []; // { id, label, buildFn }
+
+  unsafeWindow.OmegaAba = function(abaId) {
+    // Atualiza botoes
+    document.querySelectorAll('#omega-tabs button').forEach(function(btn){
+      var ativo = btn.getAttribute('data-aba') === abaId;
+      btn.style.background = ativo ? '#1a73e8' : '#e8f0fe';
+      btn.style.color      = ativo ? '#fff'    : '#1a73e8';
+    });
+    // Mostra/oculta conteudo
+    document.querySelectorAll('#omega-content > [data-aba-content]').forEach(function(el){
+      el.style.display = el.getAttribute('data-aba-content') === abaId ? 'block' : 'none';
+    });
+    // Callback pos-troca se existir
+    if(window._OmegaAbaCallbacks && window._OmegaAbaCallbacks[abaId]){
+      window._OmegaAbaCallbacks[abaId]();
+    }
+  };
+
+  // ── Utilitários globais ─────────────────────────────────────────
   window.OmegaUtils = {
 
     box: function(el,ok,msg){
@@ -79,11 +110,46 @@
       return inputEl.val()===valor;
     },
 
-    addSecao: function(html){
-      document.getElementById('omega-content').insertAdjacentHTML('beforeend',html);
+    // Registra uma aba no painel — chamado pelos modulos
+    // id: string unica, label: texto do botao, html: conteudo, onShow: callback opcional
+    registrarAba: function(id, label, html, onShow) {
+      var tabsDiv    = document.getElementById('omega-tabs');
+      var contentDiv = document.getElementById('omega-content');
+
+      // Botao da aba
+      var btn = document.createElement('button');
+      btn.setAttribute('data-aba', id);
+      btn.textContent = label;
+      btn.style.cssText = 'padding:7px;background:#e8f0fe;color:#1a73e8;border:none;border-radius:7px;font-size:12px;cursor:pointer;font-weight:bold';
+      btn.onclick = function(){ OmegaAba(id); };
+      tabsDiv.appendChild(btn);
+
+      // Ajusta grid conforme numero de abas
+      var total = tabsDiv.children.length;
+      tabsDiv.style.gridTemplateColumns = 'repeat('+total+', 1fr)';
+
+      // Conteudo da aba
+      var div = document.createElement('div');
+      div.setAttribute('data-aba-content', id);
+      div.style.display = 'none';
+      div.innerHTML = html;
+      contentDiv.appendChild(div);
+
+      // Callback
+      if(onShow){
+        if(!window._OmegaAbaCallbacks) window._OmegaAbaCallbacks = {};
+        window._OmegaAbaCallbacks[id] = onShow;
+      }
+
+      // Ativa a primeira aba automaticamente
+      if(total === 1) OmegaAba(id);
     },
 
-    // ── Gerenciamento da chave API ──────────────────────────────────
+    // Mantido por compatibilidade — adiciona HTML dentro da aba ativa ou direto no content
+    addSecao: function(html){
+      document.getElementById('omega-content').insertAdjacentHTML('beforeend', html);
+    },
+
     getApiKey: function(){
       return GM_getValue ? GM_getValue('omega_api_key','') : localStorage.getItem('omega_api_key')||'';
     },
@@ -92,5 +158,22 @@
       else localStorage.setItem('omega_api_key',key);
     }
   };
+
+  // ── Config API ──────────────────────────────────────────────────
+  unsafeWindow.OmegaConfigAPI = function() {
+    var atual = window.OmegaUtils.getApiKey();
+    var nova  = prompt('Cole sua chave da API Anthropic (sk-ant-...):', atual ? '********' : '');
+    if(nova && nova !== '********'){
+      window.OmegaUtils.setApiKey(nova.trim());
+      _atualizarStatusAPI();
+    }
+  };
+
+  function _atualizarStatusAPI() {
+    var el  = document.getElementById('omega-api-status');
+    var key = window.OmegaUtils.getApiKey();
+    if(el) el.textContent = key ? 'API configurada' : 'API nao configurada';
+  }
+  _atualizarStatusAPI();
 
 })();
