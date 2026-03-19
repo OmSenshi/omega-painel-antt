@@ -135,10 +135,24 @@
     if(raw&&(raw.length===11||raw.length===14)){
       var nf=U.fAuto(raw), ap=U.getDoc();
       if(ap){
+        // Seleciona no dropdown PRIMEIRO, antes de substituir textos
+        var sel=document.getElementById('CPFCNPJArrendanteTransportador'), selecionou=false;
+        if(sel){
+          for(var i=0;i<sel.options.length;i++){
+            // Tenta bater tanto pelo value sem formatacao quanto pelo value formatado
+            var optVal=sel.options[i].value.replace(/\D/g,'');
+            if(optVal===raw){
+              sel.selectedIndex=i;
+              sel.dispatchEvent(new Event('change',{bubbles:true}));
+              if(jq) jq(sel).trigger('change');
+              selecionou=true;
+              break;
+            }
+          }
+        }
+        // Substituicoes depois da selecao
         var r1=U.substituirTudo(U.fAuto(ap),nf); var r2=U.substituirTudo(ap,raw);
         var tot=r1.total+r2.total;
-        var sel=document.getElementById('CPFCNPJArrendanteTransportador'), selecionou=false;
-        if(sel){for(var i=0;i<sel.options.length;i++){if(sel.options[i].value===raw){sel.selectedIndex=i;sel.dispatchEvent(new Event('change',{bubbles:true}));if(jq)jq(sel).trigger('change');selecionou=true;break;}}}
         msgs.push('CPF: <b>'+nf+'</b> ('+tot+' trocas'+(selecionou?', selecionado':'')+')');
       }
     }
