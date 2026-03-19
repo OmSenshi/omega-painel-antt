@@ -139,7 +139,7 @@
         var sel=document.getElementById('CPFCNPJArrendanteTransportador'), selecionou=false;
         if(sel){
           for(var i=0;i<sel.options.length;i++){
-            // Tenta bater tanto pelo value sem formatacao quanto pelo value formatado
+            // Value do portal vem com aspas extras ex: '"35698229000126"' — remove tudo que nao e numero
             var optVal=sel.options[i].value.replace(/\D/g,'');
             if(optVal===raw){
               sel.selectedIndex=i;
@@ -147,6 +147,19 @@
               if(jq) jq(sel).trigger('change');
               selecionou=true;
               break;
+            }
+          }
+          // Se nao encontrou por value, tenta pelo texto formatado
+          if(!selecionou){
+            var nfBusca=U.fAuto(raw);
+            for(var i=0;i<sel.options.length;i++){
+              if(sel.options[i].text.replace(/\D/g,'')===raw){
+                sel.selectedIndex=i;
+                sel.dispatchEvent(new Event('change',{bubbles:true}));
+                if(jq) jq(sel).trigger('change');
+                selecionou=true;
+                break;
+              }
             }
           }
         }
