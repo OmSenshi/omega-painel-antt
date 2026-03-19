@@ -8,7 +8,7 @@
   // ── Painel principal ────────────────────────────────────────────────
   var s=document.createElement('div');
   s.id='antt-helper';
-  s.style.cssText='position:fixed;top:20px;right:20px;z-index:999999;background:#fff;border:2px solid #1a73e8;border-radius:12px;padding:16px;box-shadow:0 4px 20px rgba(0,0,0,0.2);font-family:Arial,sans-serif;width:320px;';
+  s.style.cssText='position:fixed;top:20px;right:20px;z-index:999999;background:#fff;border:2px solid #1a73e8;border-radius:12px;padding:16px;box-shadow:0 4px 20px rgba(0,0,0,0.2);font-family:Arial,sans-serif;width:380px;';
   s.innerHTML=''
     +'<div style="text-align:center;margin-bottom:2px">'
     +'<div style="font-size:20px;font-weight:bold;color:#1a73e8;letter-spacing:2px">OMEGA</div>'
