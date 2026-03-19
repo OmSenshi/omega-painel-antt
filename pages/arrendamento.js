@@ -399,6 +399,13 @@
     return 'ha ' + hrs + 'h';
   }
 
+  function isPaginaVeiculo() {
+    var mc = document.querySelector('.main_content');
+    if(!mc) return false;
+    var tipo = mc.getAttribute('data-tipo-pedido') || '';
+    return tipo === 'MovimentacaoFrota' || tipo === 'Cadastro';
+  }
+
   function renderHistorico() {
     var lista  = carregarHistorico();
     var el     = document.getElementById('omega-historico-lista');
@@ -410,19 +417,24 @@
       return;
     }
     if(vazio) vazio.style.display = 'none';
+    var ehPaginaVeiculo = isPaginaVeiculo();
     el.innerHTML = lista.map(function(item, idx){
       var placa = item.placa;
       var display = /^[A-Z]{3}[0-9]{4}$/.test(placa) ? placa.substring(0,3)+'-'+placa.substring(3) : placa;
       var tempo = tempoRelativo(item.ts);
+      var botoes = '<div style="display:flex;gap:4px">'
+        +'<button onclick="OmegaImportarHistorico('+idx+')" style="padding:5px 10px;background:#1a73e8;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer">Usar</button>';
+      if(ehPaginaVeiculo){
+        botoes += '<button onclick="OmegaInserirVeiculo('+idx+')" style="padding:5px 10px;background:#27ae60;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer">Veiculo</button>';
+      }
+      botoes += '<button onclick="OmegaRemoverHistorico('+idx+')" style="padding:5px 8px;background:#fce8e6;color:#c0392b;border:none;border-radius:6px;font-size:11px;cursor:pointer">x</button>'
+        +'</div>';
       return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f0f0f0">'
         +'<div>'
           +'<div style="font-size:12px;font-weight:bold;color:#333">'+display+'</div>'
           +'<div style="font-size:10px;color:#aaa">'+tempo+'</div>'
         +'</div>'
-        +'<div style="display:flex;gap:4px">'
-          +'<button onclick="OmegaImportarHistorico('+idx+')" style="padding:5px 10px;background:#1a73e8;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer">Usar</button>'
-          +'<button onclick="OmegaRemoverHistorico('+idx+')" style="padding:5px 8px;background:#fce8e6;color:#c0392b;border:none;border-radius:6px;font-size:11px;cursor:pointer">x</button>'
-        +'</div>'
+        +botoes
       +'</div>';
     }).join('');
   }
@@ -444,6 +456,124 @@
     if(item.renavam){ document.getElementById('antt-renavam-input').value = item.renavam; }
     OmegaAba('crlv');
     U.box(document.getElementById('omega-extract-status'), true, 'Dados importados do historico!');
+  };
+
+  // ── Inserir veiculo direto no popup (cadastro/movimentacao) ────
+  unsafeWindow.OmegaInserirVeiculo = function(idx){
+    var lista = carregarHistorico();
+    var item  = lista[idx];
+    if(!item) return;
+
+    var jqRef = unsafeWindow.jQuery || unsafeWindow.$;
+    var st    = document.getElementById('omega-extract-status');
+
+    // Verifica se popup de veiculo ja esta aberto
+    var modal  = document.getElementById('manterVeiculoModal');
+    var aberto = modal && (modal.style.display==='block' || modal.classList.contains('show'));
+    var titulo = modal ? modal.querySelector('.modal-title') : null;
+    var ehVeiculo = titulo && titulo.textContent.indexOf('Dados do Ve')!==-1;
+
+    function preencher(){
+      var campoPlaca   = document.getElementById('Placa');
+      var campoRenavam = document.getElementById('Renavam');
+      var btnVerificar = document.getElementById('verificar');
+      if(!campoPlaca || !campoRenavam){ U.box(st, false, 'Modal do veiculo nao abriu.'); return; }
+
+      var placaVal = (item.placa||'').replace(/[^A-Z0-9]/gi,'').toUpperCase();
+      campoPlaca.removeAttribute('disabled');
+      campoPlaca.value = '';
+      campoPlaca.focus();
+
+      var i=0;
+      function proxChar(){
+        if(i>=placaVal.length){
+          campoPlaca.dispatchEvent(new Event('change',{bubbles:true}));
+          campoPlaca.dispatchEvent(new Event('blur',{bubbles:true}));
+          setTimeout(function(){
+            campoRenavam.removeAttribute('disabled');
+            campoRenavam.value = item.renavam||'';
+            campoRenavam.dispatchEvent(new Event('input',{bubbles:true}));
+            campoRenavam.dispatchEvent(new Event('change',{bubbles:true}));
+            campoRenavam.dispatchEvent(new Event('blur',{bubbles:true}));
+            setTimeout(function(){
+              U.box(st, true, 'Verificando veiculo...');
+              jqRef.ajax({
+                type:'GET', url:'/Veiculo/BuscarVeiculo', cache:false,
+                data:{ placa:campoPlaca.value.toUpperCase(), renavam:campoRenavam.value },
+                success: function(){ setTimeout(function(){ if(btnVerificar) btnVerificar.click(); }, 500); },
+                error:   function(){ setTimeout(function(){ if(btnVerificar) btnVerificar.click(); }, 500); }
+              });
+              // Monitora popups e salva
+              var tent=0, intv=setInterval(function(){
+                tent++;
+                var bbSim = document.querySelector('.bootbox-confirm button[data-bb-handler="confirm"]');
+                if(bbSim && bbSim.offsetParent!==null){
+                  clearInterval(intv);
+                  U.box(st, true, 'Popup detectado! Confirmando em 3s...');
+                  setTimeout(function(){
+                    bbSim.click();
+                    setTimeout(function(){
+                      var tent2=0, intv2=setInterval(function(){
+                        tent2++;
+                        var m2=document.getElementById('manterVeiculoModal');
+                        var t2=m2?m2.querySelector('.modal-title'):null;
+                        var ehMov=t2&&t2.textContent.indexOf('Movimenta')!==-1;
+                        var vis2=m2&&(m2.style.display==='block'||m2.classList.contains('show'));
+                        var btnEx=document.querySelector('.btn-confirmar-exclusao');
+                        if(ehMov&&vis2&&btnEx){
+                          clearInterval(intv2);
+                          setTimeout(function(){
+                            btnEx.click();
+                            setTimeout(function(){
+                              var btnInc=document.querySelector('.btn-confirmar-inclusao');
+                              if(btnInc) btnInc.click();
+                              setTimeout(salvar, 1500);
+                            },1500);
+                          },500);
+                        } else if(tent2>=15){ clearInterval(intv2); salvar(); }
+                      },300);
+                    },1500);
+                  },3000);
+                  return;
+                }
+                var chassi=document.getElementById('Chassi');
+                if(chassi&&chassi.value&&chassi.value.trim()!==''){clearInterval(intv);salvar();return;}
+                if(tent>=20){clearInterval(intv);salvar();}
+              },300);
+
+              function salvar(){
+                var tara=document.getElementById('Tara');
+                if(tara&&(!tara.value||tara.value==='')){tara.removeAttribute('disabled');tara.value='2';jqRef(tara).trigger('input').trigger('change');}
+                setTimeout(function(){
+                  var btnS=document.querySelector('.btn-salvar-veiculo')||document.querySelector('.btn-confirmar-inclusao');
+                  if(btnS){btnS.removeAttribute('disabled');btnS.click();U.box(st,true,'Veiculo salvo! Placa: <b>'+campoPlaca.value+'</b>');}
+                  else U.box(st,false,'Botao Salvar nao encontrado.');
+                },800);
+              }
+            },400);
+          },300);
+          return;
+        }
+        var ch=placaVal[i];
+        campoPlaca.value=placaVal.substring(0,i+1);
+        campoPlaca.dispatchEvent(new Event('input',{bubbles:true}));
+        campoPlaca.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
+        i++;
+        setTimeout(proxChar,i===4?150:80);
+      }
+      proxChar();
+    }
+
+    if(aberto && ehVeiculo){
+      U.box(st, true, 'Preenchendo veiculo no popup...');
+      preencher();
+    } else {
+      var btnAdd = document.querySelector('[data-action*="VeiculoPedido/Novo"]');
+      if(!btnAdd){ U.box(st, false, 'Botao Adicionar Veiculo nao encontrado.'); return; }
+      U.box(st, true, 'Abrindo popup de veiculo...');
+      btnAdd.click();
+      setTimeout(preencher, 1500);
+    }
   };
 
   // ── Importacao manual via codigo OMEGA ──────────────────────────
