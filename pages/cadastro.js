@@ -107,10 +107,7 @@
     +'</div>'
   , function(){ atualizarSecaoAcoes(); });
 
-  // Move o botao Cadastro para a primeira posicao no grid de abas
-  var tabsDiv = document.getElementById('omega-tabs');
-  var btnCad  = document.querySelector('#omega-tabs button[data-aba="cadastro"]');
-  if(tabsDiv && btnCad) tabsDiv.insertBefore(btnCad, tabsDiv.firstChild);
+
 
   // ── Listeners abas do portal ────────────────────────────────────
   document.querySelectorAll('.nav-tabs .nav-link').forEach(function(link){
