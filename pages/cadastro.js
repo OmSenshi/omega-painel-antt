@@ -265,27 +265,29 @@
 
   // ── Transportador CPF ───────────────────────────────────────────
   function preencherTransportadorCPF(identidade, uf, callback) {
-    // Busca campos com varios seletores possiveis — nunca clica em links de navegacao
-    var campoIdent = document.getElementById('Identidade')
-      || document.querySelector('input[name="Identidade"]')
-      || document.querySelector('input[id*="dentidade"]');
-    var campoOrgao = document.getElementById('OrgaoEmissor')
-      || document.querySelector('input[name="OrgaoEmissor"]')
-      || document.querySelector('input[id*="rgao"]');
-    var campoUF    = document.getElementById('UF')
-      || document.querySelector('select[name="UF"]')
-      || document.querySelector('select[id="UF"]');
+    // IDs reais do portal ANTT (padrão TransportadorTac_*)
+    var campoIdent = document.getElementById('TransportadorTac_Identidade')
+      || document.getElementById('Identidade')
+      || document.querySelector('input[name="TransportadorTac.Identidade"]')
+      || document.querySelector('input[name="Identidade"]');
+    var campoOrgao = document.getElementById('TransportadorTac_OrgaoEmissor')
+      || document.getElementById('OrgaoEmissor')
+      || document.querySelector('input[name="TransportadorTac.OrgaoEmissor"]')
+      || document.querySelector('input[name="OrgaoEmissor"]');
+    var campoUF    = document.getElementById('TransportadorTac_Uf')
+      || document.getElementById('UF')
+      || document.querySelector('select[name="TransportadorTac.Uf"]')
+      || document.querySelector('select[name="UF"]');
 
     // Tenta clicar na aba interna do pedido (nao no menu lateral)
-    // Apenas links que sao abas bootstrap dentro do formulario do pedido
     if(!campoIdent) {
       var tabInterna = document.querySelector('.nav-tabs a[href="#transportador"], .nav-tabs a[href="#Transportador"]');
       if(tabInterna) {
         tabInterna.click();
         setTimeout(function(){
-          campoIdent = document.getElementById('Identidade') || document.querySelector('input[name="Identidade"]');
-          campoOrgao = document.getElementById('OrgaoEmissor') || document.querySelector('input[name="OrgaoEmissor"]');
-          campoUF    = document.getElementById('UF') || document.querySelector('select[name="UF"]');
+          campoIdent = document.getElementById('TransportadorTac_Identidade') || document.getElementById('Identidade') || document.querySelector('input[name="TransportadorTac.Identidade"]');
+          campoOrgao = document.getElementById('TransportadorTac_OrgaoEmissor') || document.getElementById('OrgaoEmissor') || document.querySelector('input[name="TransportadorTac.OrgaoEmissor"]');
+          campoUF    = document.getElementById('TransportadorTac_Uf') || document.getElementById('UF') || document.querySelector('select[name="TransportadorTac.Uf"]');
           _fillIdent(campoIdent, campoOrgao, campoUF, identidade, uf, callback);
         }, 800);
         return;
