@@ -136,23 +136,30 @@
     if(raw&&(raw.length===11||raw.length===14)){
       var nf=U.fAuto(raw);
 
-      // Captura o doc antigo ANTES de qualquer acao
-      // Prioriza NomesTransportador (tem o CNPJ correto do arrendante)
+      // Captura doc antigo — prioriza NomesTransportador
       var ap = null;
       var nt = document.getElementById('NomesTransportador');
       if(nt && nt.value){
         try{
-          var arr = JSON.parse(nt.value);
-          if(arr && arr[0] && arr[0].CpfCnpj) ap = arr[0].CpfCnpj.replace(/\D/g,'');
+          var arr=JSON.parse(nt.value);
+          if(arr&&arr[0]&&arr[0].CpfCnpj) ap=arr[0].CpfCnpj.replace(/\D/g,'');
         }catch(e){}
       }
-      if(!ap) ap = U.getDoc();
+      if(!ap) ap=U.getDoc();
 
-      // Seleciona a primeira option valida do dropdown
+      // 1) Faz as substituicoes de texto/value no DOM
+      var tot=0;
+      if(ap){
+        var r1=U.substituirTudo(U.fAuto(ap),nf);
+        var r2=U.substituirTudo(ap,raw);
+        tot=r1.total+r2.total;
+      }
+
+      // 2) Agora a option ja tem o novo CNPJ como value — seleciona ela
       var sel=document.getElementById('CPFCNPJArrendanteTransportador'), selecionou=false;
       if(sel){
         for(var i=0;i<sel.options.length;i++){
-          if(sel.options[i].text && sel.options[i].text !== 'Selecione'){
+          if(sel.options[i].value.replace(/\D/g,'')===raw || sel.options[i].text.replace(/\D/g,'')===raw){
             sel.selectedIndex=i;
             sel.dispatchEvent(new Event('change',{bubbles:true}));
             if(jq) jq(sel).trigger('change');
@@ -160,32 +167,35 @@
             break;
           }
         }
-      }
-
-      // Aguarda o portal processar a selecao antes de substituir
-      setTimeout(function(){
-        var tot=0;
-        if(ap){
-          var r1=U.substituirTudo(U.fAuto(ap),nf);
-          var r2=U.substituirTudo(ap,raw);
-          tot=r1.total+r2.total;
-        }
-        msgs.push('CPF: <b>'+nf+'</b> ('+tot+' trocas'+(selecionou?', selecionado':'')+')');
-
-        if(nn){
-          var an=U.getNome();
-          if(an){
-            var res=U.substituirTudo(an,nn);
-            var cv=document.getElementById('NomeArrendanteInput');
-            if(cv){cv.removeAttribute('disabled');cv.value=nn;cv.setAttribute('disabled','disabled');}
-            msgs.push('Nome: <b>'+nn+'</b> ('+res.total+' trocas)');
+        // Fallback: seleciona a primeira option nao vazia
+        if(!selecionou){
+          for(var i=0;i<sel.options.length;i++){
+            if(sel.options[i].text && sel.options[i].text!=='Selecione'){
+              sel.selectedIndex=i;
+              sel.dispatchEvent(new Event('change',{bubbles:true}));
+              if(jq) jq(sel).trigger('change');
+              selecionou=true;
+              break;
+            }
           }
         }
+      }
 
-        if(msgs.length>0) U.box(st,true,msgs.join('<br>'));
-        else U.box(st,false,'Preencha CPF/CNPJ ou Nome.');
-      }, 600);
-      return; // sai antes do bloco de nome/status abaixo
+      msgs.push('CPF: <b>'+nf+'</b> ('+tot+' trocas'+(selecionou?', selecionado':'')+')');
+
+      if(nn){
+        var an=U.getNome();
+        if(an){
+          var res=U.substituirTudo(an,nn);
+          var cv=document.getElementById('NomeArrendanteInput');
+          if(cv){cv.removeAttribute('disabled');cv.value=nn;cv.setAttribute('disabled','disabled');}
+          msgs.push('Nome: <b>'+nn+'</b> ('+res.total+' trocas)');
+        }
+      }
+
+      if(msgs.length>0) U.box(st,true,msgs.join('<br>'));
+      else U.box(st,false,'Preencha CPF/CNPJ ou Nome.');
+      return;
     }
 
     // Sem CPF — apenas nome
