@@ -195,6 +195,8 @@
     var tipo = document.getElementById('omega-cad-tipo-badge').textContent.indexOf('CNPJ')!==-1?'CNPJ':'CPF';
     U.box(st, true, 'Iniciando...');
     window._omegaAutomacaoAtiva = true;
+    // Mata timers ativos do portal (toast de redirect)
+    if(window.OmegaMatarTimers) window.OmegaMatarTimers();
     if(tipo==='CPF') iniciarCPF(st); else iniciarCNPJ(st);
     return false;
   }, true); // capture=true para interceptar antes do form
@@ -404,6 +406,7 @@
                       if(btnS&&!btnS._omegaClicado){
                         btnS._omegaClicado=true;
                         btnS.click();
+                        if(window.OmegaMatarTimers) setTimeout(window.OmegaMatarTimers, 500);
                         setTimeout(function(){if(btnS)btnS._omegaClicado=false;},3000);
                       }
                       setTimeout(callback,1200);
@@ -447,48 +450,59 @@
       setTimeout(function(){
         // Confirma selecao do tipo sem trigger
         if(campoFunc && campoFunc.value!=='1'){ campoFunc.value='1'; }
-        // Recarrega referencia ao campo CPF (pode ter sido recriado pelo portal)
+        // Recarrega referencia ao campo CPF
         campoCPF=document.getElementById('CpfCnpj');
         if(!campoCPF){U.box(st,false,'Campo CPF do gestor nao encontrado.');callback();return;}
-        // Foca no campo antes de digitar
-        campoCPF.value='';
-        campoCPF.focus();
-        campoCPF.click();
-        campoCPF.dispatchEvent(new Event('focus',{bubbles:true}));
-        setTimeout(function(){
-          // Digita CPF char a char
-          var chars=cpfFmt.split(''),i=0;
-          function proxChar(){
-            if(i>=chars.length){
-              campoCPF.dispatchEvent(new Event('change',{bubbles:true}));
-              campoCPF.dispatchEvent(new Event('blur',{bubbles:true}));
-              // Aguarda portal carregar o nome
-              var tent=0,intv=setInterval(function(){
-                tent++;
-                var nome=document.getElementById('Nome'),btnS=document.querySelector('.btn-salvar-gestor');
-                if((nome&&nome.value&&nome.value.trim()!=='')||tent>25){
-                  clearInterval(intv);
-                  if(!nome||!nome.value){U.box(st,false,'Portal nao carregou nome do gestor. Verifique o CPF.');callback();return;}
-                  var cb=document.getElementById('isDeclaracaoIdoneoArtigo2');
-                  if(cb){jqRef(cb).iCheck('check');cb.checked=true;jqRef(cb).trigger('ifChecked').trigger('change');}
-                  setTimeout(function(){
-                    if(btnS&&!btnS._omegaClicado){
-                      btnS._omegaClicado=true;btnS.removeAttribute('disabled');btnS.click();
-                      setTimeout(function(){if(btnS)btnS._omegaClicado=false;},3000);
+
+        // Aguarda campo CPF estar vazio e estável (portal pode resetar após selecao tipo)
+        var tentEstavel=0, intvEstavel=setInterval(function(){
+          tentEstavel++;
+          campoCPF=document.getElementById('CpfCnpj');
+          if(campoCPF && !campoCPF.disabled || tentEstavel>=10){
+            clearInterval(intvEstavel);
+            // Foca e digita
+            campoCPF.value='';
+            campoCPF.focus();
+            campoCPF.click();
+            campoCPF.dispatchEvent(new Event('focus',{bubbles:true}));
+            setTimeout(function(){
+              var chars=cpfFmt.split(''),i=0;
+              function proxChar(){
+                if(i>=chars.length){
+                  campoCPF.dispatchEvent(new Event('change',{bubbles:true}));
+                  campoCPF.dispatchEvent(new Event('blur',{bubbles:true}));
+                  // Mata timers do portal após digitar CPF
+                  if(window.OmegaMatarTimers) window.OmegaMatarTimers();
+                  // Aguarda portal carregar o nome
+                  var tent=0,intv=setInterval(function(){
+                    tent++;
+                    var nome=document.getElementById('Nome'),btnS=document.querySelector('.btn-salvar-gestor');
+                    if((nome&&nome.value&&nome.value.trim()!=='')||tent>25){
+                      clearInterval(intv);
+                      if(!nome||!nome.value){U.box(st,false,'Portal nao carregou nome do gestor. Verifique o CPF.');callback();return;}
+                      var cb=document.getElementById('isDeclaracaoIdoneoArtigo2');
+                      if(cb){jqRef(cb).iCheck('check');cb.checked=true;jqRef(cb).trigger('ifChecked').trigger('change');}
+                      setTimeout(function(){
+                        if(window.OmegaMatarTimers) window.OmegaMatarTimers();
+                        if(btnS&&!btnS._omegaClicado){
+                          btnS._omegaClicado=true;btnS.removeAttribute('disabled');btnS.click();
+                          setTimeout(function(){if(btnS)btnS._omegaClicado=false;},3000);
+                        }
+                        setTimeout(callback,1200);
+                      },800);
                     }
-                    setTimeout(callback,1200);
-                  },800);
+                  },600);
+                  return;
                 }
-              },600);
-              return;
-            }
-            var ch=chars[i];
-            campoCPF.value+=ch;
-            campoCPF.dispatchEvent(new Event('input',{bubbles:true}));
-            campoCPF.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
-            i++;setTimeout(proxChar,80);
+                var ch=chars[i];
+                campoCPF.value+=ch;
+                campoCPF.dispatchEvent(new Event('input',{bubbles:true}));
+                campoCPF.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
+                i++;setTimeout(proxChar,80);
+              }
+              proxChar();
+            },300);
           }
-          proxChar();
         },300);
       },1200);
     },1500);
@@ -607,7 +621,12 @@
               c.dispatchEvent(new Event('blur',{bubbles:true}));
               setTimeout(function(){
                 var s=document.querySelector('.btn-salvar-contato');
-                if(s&&!s._omegaClicado){s._omegaClicado=true;s.click();setTimeout(function(){if(s)s._omegaClicado=false;},3000);callback(true);}
+                if(s&&!s._omegaClicado){
+                  s._omegaClicado=true;s.click();
+                  if(window.OmegaMatarTimers) setTimeout(window.OmegaMatarTimers,500);
+                  setTimeout(function(){if(s)s._omegaClicado=false;},3000);
+                  callback(true);
+                }
                 else if(!s)callback(false);
               },600);
               return;
