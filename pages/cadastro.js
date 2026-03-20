@@ -415,8 +415,14 @@
   function adicionarGestor(cpfSocio,st,callback){
     var jqRef=unsafeWindow.jQuery||unsafeWindow.$;
     var cpfFmt=cpfSocio.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4');
-    var btn=document.querySelector('[data-action*="GestorPedido/Novo"],[data-action*="Gestor/Criar"]');
-    if(!btn){document.querySelectorAll('button,a').forEach(function(el){if(!btn&&el.textContent.toLowerCase().trim()==='adicionar gestor')btn=el;});}
+    // Busca especificamente BUTTON com data-action contendo GestorPedido/Novo
+    var btn=document.querySelector('button[data-action*="GestorPedido/Novo"]');
+    if(!btn){
+      // Fallback: busca por texto exato no botao
+      document.querySelectorAll('button').forEach(function(el){
+        if(!btn && el.textContent.trim()==='Adicionar Gestor') btn=el;
+      });
+    }
     if(!btn){U.box(st,false,'Botao Gestor nao encontrado — adicione manualmente.');callback();return;}
     btn.click();
     setTimeout(function(){
@@ -469,7 +475,13 @@
   var CPF_RT='071.417.536-64';
   function adicionarRT(st,callback){
     var jqRef=unsafeWindow.jQuery||unsafeWindow.$;
-    var btn=document.querySelector('[data-action*="ResponsavelTecnico/Criar"]');
+    // Busca especificamente BUTTON com data-action contendo ResponsavelTecnico/Criar
+    var btn=document.querySelector('button[data-action*="ResponsavelTecnico/Criar"]');
+    if(!btn){
+      document.querySelectorAll('button').forEach(function(el){
+        if(!btn && el.textContent.trim()==='Adicionar Responsável Técnico') btn=el;
+      });
+    }
     if(!btn){callback();return;}
     btn.click();
     setTimeout(function(){
