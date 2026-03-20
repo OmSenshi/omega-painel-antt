@@ -161,55 +161,24 @@
 
   // ── Proteção contra reload durante automação ────────────────────
   window._omegaAutomacaoAtiva = false;
-  window._omegaIntervals = [];
-  // Salva referências nativas ANTES de qualquer interceptação
-  var _setTimeoutNativo  = unsafeWindow.setTimeout.bind(unsafeWindow);
-  var _setIntervalNativo = unsafeWindow.setInterval.bind(unsafeWindow);
-  var _clearIntervalNativo = unsafeWindow.clearInterval.bind(unsafeWindow);
-  var _clearTimeoutNativo  = unsafeWindow.clearTimeout.bind(unsafeWindow);
-  window._setTimeoutNativo = _setTimeoutNativo; // expoe pro cadastro.js usar
-  // Intercepta setInterval para rastrear todos os timers do portal
-  unsafeWindow.setInterval = function(fn, delay){
-    var id = _setIntervalNativo.apply(this, arguments);
-    window._omegaIntervals.push(id);
-    return id;
-  };
+  // Salva setTimeout nativo para callbacks da automação
+  window._setTimeoutNativo = unsafeWindow.setTimeout.bind(unsafeWindow);
 
-  // Função para matar todos os intervals ativos (cancela o toast/redirect)
+  // Mata timers recentes do portal (toast de redirect)
   window.OmegaMatarTimers = function(){
-    var idMax = _setIntervalNativo(function(){}, 99999);
-    _clearIntervalNativo(idMax);
-    for(var i=idMax; i>idMax-200; i--){
-      _clearIntervalNativo(i);
-      _clearTimeoutNativo(i);
-    }
-    window._omegaIntervals.forEach(function(id){ _clearIntervalNativo(id); });
-    window._omegaIntervals = [];
+    try{
+      var idRef = unsafeWindow.setTimeout(function(){},1);
+      unsafeWindow.clearTimeout(idRef);
+      for(var i=idRef; i>Math.max(0,idRef-300); i--){
+        unsafeWindow.clearInterval(i);
+      }
+    }catch(e){}
   };
 
-  // Bloqueia location.href durante automação
-  var _locHref = Object.getOwnPropertyDescriptor(unsafeWindow.location.__proto__, 'href') ||
-                 Object.getOwnPropertyDescriptor(unsafeWindow.location, 'href');
-  try {
-    Object.defineProperty(unsafeWindow.location, 'href', {
-      get: _locHref ? _locHref.get : function(){ return document.URL; },
-      set: function(v){
-        if(window._omegaAutomacaoAtiva){
-          console.log('[OMEGA] Redirect bloqueado:', v);
-          return;
-        }
-        if(_locHref && _locHref.set) _locHref.set.call(this, v);
-      },
-      configurable: true
-    });
-  } catch(e){}
-
-  // Bloqueia beforeunload
+  // Bloqueia beforeunload durante automação
   unsafeWindow.addEventListener('beforeunload', function(e){
     if(window._omegaAutomacaoAtiva){
-      e.preventDefault();
-      e.returnValue = '';
-      return '';
+      e.preventDefault(); e.returnValue=''; return '';
     }
   }, true);
   unsafeWindow.OmegaConfigAPI = function() {
