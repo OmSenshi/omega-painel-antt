@@ -223,7 +223,7 @@
               U.box(st,true,'Automacao CPF concluida!');
             });
           },1500);
-        },'COR'); // CPF usa COR (Correspondencia) — modal nao tem RES
+        }); (Correspondencia) — modal nao tem RES
       },1200);
     });
   }
@@ -265,7 +265,7 @@
             },2000);
           });
         },1500);
-      },'COR');
+      });
     },1200);
   }
 
@@ -311,119 +311,96 @@
 
   // ── Endereco ────────────────────────────────────────────────────
   function preencherEnderecoComDados(cep,logradouro,numero,bairro,complemento,st,callback,tipoEndereco){
-    // tipoEndereco: 'RES' para CPF, 'COR' para CNPJ
-    var tipo = tipoEndereco || 'RES';
     var jqRef = unsafeWindow.jQuery || unsafeWindow.$;
-    var btn=document.querySelector('[data-action*="EnderecoPedido/Novo"]');
-    if(!btn){U.box(st,false,'Botao Endereco nao encontrado.');callback();return;}
+    var btn = document.querySelector('button[data-action*="EnderecoPedido/Novo"]');
+    if(!btn){ U.box(st,false,'Botao Endereco nao encontrado.'); callback(); return; }
     btn.click();
 
     setTimeout(function(){
-      var campoCep=document.getElementById('Cep');
-      if(!campoCep){U.box(st,false,'Modal de endereco nao abriu.');callback();return;}
+      var campoCep = document.getElementById('Cep');
+      if(!campoCep){ U.box(st,false,'Modal de endereco nao abriu.'); callback(); return; }
 
-      // Seta tipo de endereco com dupla tentativa e fallback para COR
-      // Aguarda dropdown ter options carregadas
-      function setarTipo(){
-        var ct=document.getElementById('CodigoTipoEndereco');
-        if(!ct || ct.options.length<=1) return; // ainda nao carregou
-        var existe = Array.from(ct.options).some(function(o){return o.value===tipo;});
-        var tipoFinal = existe ? tipo : 'COR';
-        ct.value=tipoFinal;
-        ct.selectedIndex=Array.from(ct.options).findIndex(function(o){return o.value===tipoFinal;});
-        jqRef(ct).trigger('change');
-      }
+      var cepFinal = (cep ? cep : cepAleatorio('MG')).replace(/\D/g,'');
+      var temDados = !!(cep && logradouro && logradouro !== '0');
 
-      // Polling ate o dropdown ter options
-      var tentTipo=0, intvTipo=setInterval(function(){
+      // PASSO 1: aguarda dropdown de tipo carregar via polling
+      var tentTipo=0;
+      var intvTipo=setInterval(function(){
         tentTipo++;
         var ct=document.getElementById('CodigoTipoEndereco');
-        if((ct&&ct.options.length>1)||tentTipo>=10){
+        if((ct && ct.options.length > 1) || tentTipo >= 15){
           clearInterval(intvTipo);
-          setarTipo();
-          setTimeout(setarTipo,400);
+          // Seta COR (Correspondência) — único tipo necessário + MesmoEndereco salva comercial também
+          if(ct && ct.options.length > 1){
+            ct.value = 'COR';
+            ct.selectedIndex = Array.from(ct.options).findIndex(function(o){return o.value==='COR';});
+            jqRef(ct).trigger('change');
+          }
+
+          // PASSO 2: digita CEP
+          setTimeout(function(){
+            campoCep.value=''; campoCep.focus();
+            campoCep.dispatchEvent(new Event('focus',{bubbles:true}));
+            var i=0;
+            function proxChar(){
+              if(i>=cepFinal.length){
+                campoCep.dispatchEvent(new Event('input',{bubbles:true}));
+                campoCep.dispatchEvent(new Event('change',{bubbles:true}));
+                campoCep.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,key:'Tab',keyCode:9}));
+                campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:'Tab',keyCode:9}));
+                campoCep.dispatchEvent(new Event('blur',{bubbles:true}));
+                var l=document.getElementById('Logradouro');
+                if(l){ l.focus(); setTimeout(function(){l.blur();},100); }
+
+                // PASSO 3: aguarda portal preencher logradouro
+                var tent=0, intv=setInterval(function(){
+                  tent++;
+                  var l2=document.getElementById('Logradouro');
+                  if((l2&&l2.value&&l2.value.trim()!=='')||tent>=20){
+                    clearInterval(intv);
+                    setTimeout(function(){
+                      // Preenche campos
+                      var l3=document.getElementById('Logradouro'),n3=document.getElementById('Numero'),b3=document.getElementById('Bairro'),c3=document.getElementById('Complemento');
+                      if(l3){l3.value=temDados?logradouro:'0'; jqRef(l3).trigger('input').trigger('change');}
+                      if(n3){n3.value=temDados?(numero||'0'):'0'; jqRef(n3).trigger('input').trigger('change');}
+                      if(b3){b3.value=temDados?(bairro||'0'):'0'; jqRef(b3).trigger('input').trigger('change');}
+                      if(c3&&complemento&&temDados){c3.value=complemento; jqRef(c3).trigger('input').trigger('change');}
+
+                      // PASSO 4: marca MesmoEndereco
+                      setTimeout(function(){
+                        var cbMesmo=document.getElementById('MesmoEndereco');
+                        if(cbMesmo&&!cbMesmo.checked){
+                          try{jqRef(cbMesmo).iCheck('check');}catch(e){}
+                          cbMesmo.checked=true;
+                          jqRef(cbMesmo).trigger('ifChecked').trigger('change');
+                        }
+
+                        // PASSO 5: salva
+                        setTimeout(function(){
+                          var btnS=document.querySelector('.btn-salvar-endereco');
+                          if(btnS&&!btnS._omegaClicado){
+                            btnS._omegaClicado=true;
+                            btnS.click();
+                            if(window.OmegaMatarTimers) setTimeout(window.OmegaMatarTimers,500);
+                            setTimeout(function(){if(btnS)btnS._omegaClicado=false;},3000);
+                          }
+                          setTimeout(callback,1500);
+                        },600);
+                      },500);
+                    },400);
+                  }
+                },500);
+                return;
+              }
+              var ch=cepFinal[i]; campoCep.value+=ch;
+              campoCep.dispatchEvent(new Event('input',{bubbles:true}));
+              campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
+              i++; setTimeout(proxChar,100);
+            }
+            proxChar();
+          },500);
         }
       },200);
-
-      var cepFinal=(cep?cep:cepAleatorio('MG')).replace(/\D/g,'');
-      var temDados=!!(cep&&logradouro&&logradouro!=='0');
-
-      // Digita CEP com delay maior entre chars
-      setTimeout(function(){
-        campoCep.value='';campoCep.focus();campoCep.dispatchEvent(new Event('focus',{bubbles:true}));
-        var i=0;
-        function proxChar(){
-          if(i>=cepFinal.length){
-            campoCep.dispatchEvent(new Event('input',{bubbles:true}));
-            campoCep.dispatchEvent(new Event('change',{bubbles:true}));
-            campoCep.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,key:'Tab',keyCode:9}));
-            campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:'Tab',keyCode:9}));
-            campoCep.dispatchEvent(new Event('blur',{bubbles:true}));
-            var l=document.getElementById('Logradouro');
-            if(l){l.focus();setTimeout(function(){l.blur();},150);}
-
-            // Aguarda portal preencher logradouro
-            var tent=0,intv=setInterval(function(){
-              tent++;
-              var l2=document.getElementById('Logradouro');
-              if((l2&&l2.value&&l2.value.trim()!=='')||tent>=20){
-                clearInterval(intv);
-
-                // Delay maior antes de preencher campos
-                setTimeout(function(){
-                  var l3=document.getElementById('Logradouro'),n3=document.getElementById('Numero'),b3=document.getElementById('Bairro'),c3=document.getElementById('Complemento');
-                  if(l3){l3.value=temDados?logradouro:'0';jqRef(l3).trigger('input').trigger('change');}
-                  if(n3){n3.value=temDados?(numero||'0'):'0';jqRef(n3).trigger('input').trigger('change');}
-                  if(b3){b3.value=temDados?(bairro||'0'):'0';jqRef(b3).trigger('input').trigger('change');}
-                  if(c3&&complemento&&temDados){c3.value=complemento;jqRef(c3).trigger('input').trigger('change');}
-
-                  // Marca checkbox MesmoEndereco por ID (CNPJ) ou por texto (fallback)
-                  setTimeout(function(){
-                    var cbMesmo = document.getElementById('MesmoEndereco');
-                    if(cbMesmo && !cbMesmo.checked){
-                      jqRef(cbMesmo).iCheck('check');
-                      cbMesmo.checked=true;
-                      jqRef(cbMesmo).trigger('ifChecked').trigger('change');
-                    } else if(!cbMesmo) {
-                      // Fallback por texto
-                      document.querySelectorAll('input[type="checkbox"]').forEach(function(cb){
-                        var label=cb.closest('label')||cb.parentElement,txt=label?label.textContent:'';
-                        if(txt.toLowerCase().includes('mesmo')||txt.toLowerCase().includes('comercial')){
-                          if(!cb.checked){
-                            try{jqRef(cb).iCheck('check');}catch(e){}
-                            cb.checked=true;jqRef(cb).trigger('ifChecked').trigger('change');
-                          }
-                        }
-                      });
-                    }
-
-                    // Garante que o tipo ainda está correto antes de salvar
-                    setarTipo();
-
-                    // Salva com delay maior
-                    setTimeout(function(){
-                      var btnS=document.querySelector('.btn-salvar-endereco');
-                      if(btnS&&!btnS._omegaClicado){
-                        btnS._omegaClicado=true;
-                        btnS.click();
-                        if(window.OmegaMatarTimers) setTimeout(window.OmegaMatarTimers, 500);
-                        setTimeout(function(){if(btnS)btnS._omegaClicado=false;},3000);
-                      }
-                      setTimeout(callback,1200);
-                    },700);
-                  },600);
-                },500);
-              }
-            },500);
-            return;
-          }
-          var ch=cepFinal[i];campoCep.value+=ch;
-          campoCep.dispatchEvent(new Event('input',{bubbles:true}));
-          campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
-          i++;setTimeout(proxChar,100);
-        }
-        proxChar();
-      }, 600); // delay antes de comecar a digitar CEP
     },1500);
   }
 
