@@ -194,6 +194,7 @@
     var self = this; setTimeout(function(){self._omegaClicado=false;},8000);
     var tipo = document.getElementById('omega-cad-tipo-badge').textContent.indexOf('CNPJ')!==-1?'CNPJ':'CPF';
     U.box(st, true, 'Iniciando...');
+    window._omegaAutomacaoAtiva = true;
     if(tipo==='CPF') iniciarCPF(st); else iniciarCNPJ(st);
     return false;
   }, true); // capture=true para interceptar antes do form
@@ -215,7 +216,10 @@
         preencherEnderecoComDados(cep,logradouro,numero,bairro,complemento,st,function(){
           setTimeout(function(){
             U.box(st,true,'3/3 — RT...');
-            adicionarRT(st,function(){U.box(st,true,'Automacao CPF concluida!');});
+            adicionarRT(st,function(){
+              window._omegaAutomacaoAtiva = false;
+              U.box(st,true,'Automacao CPF concluida!');
+            });
           },1500);
         },'COR'); // CPF usa COR (Correspondencia) — modal nao tem RES
       },1200);
@@ -249,10 +253,10 @@
                   U.box(st,true,'4/4 — Gestor + RT...');
                   if(cpfSocio){
                     adicionarGestor(cpfSocio,st,function(){
-                      setTimeout(function(){adicionarRT(st,function(){U.box(st,true,'Automacao CNPJ concluida!');});},1500);
+                      setTimeout(function(){adicionarRT(st,function(){window._omegaAutomacaoAtiva=false;U.box(st,true,'Automacao CNPJ concluida!');});},1500);
                     });
                   } else {
-                    adicionarRT(st,function(){U.box(st,false,'RT ok. Gestor sem CPF — adicione manualmente.');});
+                    adicionarRT(st,function(){window._omegaAutomacaoAtiva=false;U.box(st,false,'RT ok. Gestor sem CPF — adicione manualmente.');});
                   }
                 },1500);
               });
@@ -437,18 +441,12 @@
     setTimeout(function(){
       var campoFunc=document.getElementById('CodigoTipoVinculo'),campoCPF=document.getElementById('CpfCnpj');
       if(!campoCPF){U.box(st,false,'Modal Gestor nao abriu.');callback();return;}
-      // Seleciona Socio — envolve em try/catch pois portal pode lançar erro no change
-      if(campoFunc){
-        campoFunc.value='1';
-        try{ jqRef(campoFunc).trigger('change'); }catch(e){}
-      }
+      // Seleciona Socio — NAO dispara change para evitar erro AjustaFormularioTipoFuncao
+      if(campoFunc){ campoFunc.value='1'; }
       // Aguarda mais tempo para o portal reagir ao tipo de vinculo
       setTimeout(function(){
-        // Confirma selecao do tipo
-        if(campoFunc && campoFunc.value!=='1'){
-          campoFunc.value='1';
-          try{ jqRef(campoFunc).trigger('change'); }catch(e){}
-        }
+        // Confirma selecao do tipo sem trigger
+        if(campoFunc && campoFunc.value!=='1'){ campoFunc.value='1'; }
         // Recarrega referencia ao campo CPF (pode ter sido recriado pelo portal)
         campoCPF=document.getElementById('CpfCnpj');
         if(!campoCPF){U.box(st,false,'Campo CPF do gestor nao encontrado.');callback();return;}
