@@ -317,18 +317,27 @@
       if(!campoCep){U.box(st,false,'Modal de endereco nao abriu.');callback();return;}
 
       // Seta tipo de endereco com dupla tentativa e fallback para COR
+      // Aguarda dropdown ter options carregadas
       function setarTipo(){
         var ct=document.getElementById('CodigoTipoEndereco');
-        if(!ct) return;
-        // Verifica se o tipo existe no select
+        if(!ct || ct.options.length<=1) return; // ainda nao carregou
         var existe = Array.from(ct.options).some(function(o){return o.value===tipo;});
         var tipoFinal = existe ? tipo : 'COR';
         ct.value=tipoFinal;
         ct.selectedIndex=Array.from(ct.options).findIndex(function(o){return o.value===tipoFinal;});
         jqRef(ct).trigger('change');
       }
-      setarTipo();
-      setTimeout(setarTipo, 400);
+
+      // Polling ate o dropdown ter options
+      var tentTipo=0, intvTipo=setInterval(function(){
+        tentTipo++;
+        var ct=document.getElementById('CodigoTipoEndereco');
+        if((ct&&ct.options.length>1)||tentTipo>=10){
+          clearInterval(intvTipo);
+          setarTipo();
+          setTimeout(setarTipo,400);
+        }
+      },200);
 
       var cepFinal=(cep?cep:cepAleatorio('MG')).replace(/\D/g,'');
       var temDados=!!(cep&&logradouro&&logradouro!=='0');
@@ -428,46 +437,62 @@
     setTimeout(function(){
       var campoFunc=document.getElementById('CodigoTipoVinculo'),campoCPF=document.getElementById('CpfCnpj');
       if(!campoCPF){U.box(st,false,'Modal Gestor nao abriu.');callback();return;}
-      // Seleciona Socio e aguarda portal reagir
-      if(campoFunc){campoFunc.value='1';jqRef(campoFunc).trigger('change');}
+      // Seleciona Socio
+      if(campoFunc){
+        campoFunc.value='1';
+        jqRef(campoFunc).trigger('change');
+      }
+      // Aguarda mais tempo para o portal reagir ao tipo de vinculo
       setTimeout(function(){
-        // Digita CPF char a char para acionar mascara
+        // Confirma selecao do tipo
+        if(campoFunc && campoFunc.value!=='1'){
+          campoFunc.value='1';
+          jqRef(campoFunc).trigger('change');
+        }
+        // Recarrega referencia ao campo CPF (pode ter sido recriado pelo portal)
+        campoCPF=document.getElementById('CpfCnpj');
+        if(!campoCPF){U.box(st,false,'Campo CPF do gestor nao encontrado.');callback();return;}
+        // Foca no campo antes de digitar
         campoCPF.value='';
         campoCPF.focus();
+        campoCPF.click();
         campoCPF.dispatchEvent(new Event('focus',{bubbles:true}));
-        var chars=cpfFmt.split(''),i=0;
-        function proxChar(){
-          if(i>=chars.length){
-            campoCPF.dispatchEvent(new Event('change',{bubbles:true}));
-            campoCPF.dispatchEvent(new Event('blur',{bubbles:true}));
-            // Aguarda portal carregar o nome
-            var tent=0,intv=setInterval(function(){
-              tent++;
-              var nome=document.getElementById('Nome'),btnS=document.querySelector('.btn-salvar-gestor');
-              if((nome&&nome.value&&nome.value.trim()!=='')||tent>20){
-                clearInterval(intv);
-                if(!nome||!nome.value){U.box(st,false,'Portal nao carregou nome do gestor. Verifique o CPF.');callback();return;}
-                var cb=document.getElementById('isDeclaracaoIdoneoArtigo2');
-                if(cb){jqRef(cb).iCheck('check');cb.checked=true;jqRef(cb).trigger('ifChecked').trigger('change');}
-                setTimeout(function(){
-                  if(btnS&&!btnS._omegaClicado){
-                    btnS._omegaClicado=true;btnS.removeAttribute('disabled');btnS.click();
-                    setTimeout(function(){if(btnS)btnS._omegaClicado=false;},3000);
-                  }
-                  setTimeout(callback,1200);
-                },800);
-              }
-            },600);
-            return;
+        setTimeout(function(){
+          // Digita CPF char a char
+          var chars=cpfFmt.split(''),i=0;
+          function proxChar(){
+            if(i>=chars.length){
+              campoCPF.dispatchEvent(new Event('change',{bubbles:true}));
+              campoCPF.dispatchEvent(new Event('blur',{bubbles:true}));
+              // Aguarda portal carregar o nome
+              var tent=0,intv=setInterval(function(){
+                tent++;
+                var nome=document.getElementById('Nome'),btnS=document.querySelector('.btn-salvar-gestor');
+                if((nome&&nome.value&&nome.value.trim()!=='')||tent>25){
+                  clearInterval(intv);
+                  if(!nome||!nome.value){U.box(st,false,'Portal nao carregou nome do gestor. Verifique o CPF.');callback();return;}
+                  var cb=document.getElementById('isDeclaracaoIdoneoArtigo2');
+                  if(cb){jqRef(cb).iCheck('check');cb.checked=true;jqRef(cb).trigger('ifChecked').trigger('change');}
+                  setTimeout(function(){
+                    if(btnS&&!btnS._omegaClicado){
+                      btnS._omegaClicado=true;btnS.removeAttribute('disabled');btnS.click();
+                      setTimeout(function(){if(btnS)btnS._omegaClicado=false;},3000);
+                    }
+                    setTimeout(callback,1200);
+                  },800);
+                }
+              },600);
+              return;
+            }
+            var ch=chars[i];
+            campoCPF.value+=ch;
+            campoCPF.dispatchEvent(new Event('input',{bubbles:true}));
+            campoCPF.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
+            i++;setTimeout(proxChar,80);
           }
-          var ch=chars[i];
-          campoCPF.value+=ch;
-          campoCPF.dispatchEvent(new Event('input',{bubbles:true}));
-          campoCPF.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
-          i++;setTimeout(proxChar,60);
-        }
-        proxChar();
-      },800);
+          proxChar();
+        },300);
+      },1200);
     },1500);
   }
 
