@@ -381,10 +381,13 @@
                           if(btnS&&!btnS._omegaClicado){
                             btnS._omegaClicado=true;
                             btnS.click();
-                            if(window.OmegaMatarTimers) setTimeout(window.OmegaMatarTimers,500);
                             setTimeout(function(){if(btnS)btnS._omegaClicado=false;},3000);
                           }
-                          setTimeout(callback,1500);
+                          // Mata timers do portal primeiro, depois agenda callback com setTimeout nativo
+                          if(window.OmegaMatarTimers) window.OmegaMatarTimers();
+                          // Usa setTimeout nativo (apos matar timers) para garantir que nao e cancelado
+                          var _st = unsafeWindow.setTimeout || setTimeout;
+                          _st(callback, 2000);
                         },600);
                       },500);
                     },400);
@@ -465,7 +468,7 @@
                           btnS._omegaClicado=true;btnS.removeAttribute('disabled');btnS.click();
                           setTimeout(function(){if(btnS)btnS._omegaClicado=false;},3000);
                         }
-                        setTimeout(callback,1200);
+                        window._setTimeoutNativo ? window._setTimeoutNativo(callback,2000) : setTimeout(callback,2000);
                       },800);
                     }
                   },600);
@@ -509,8 +512,12 @@
           marcarICheck(document.getElementById('FoiResponsavelTecnico'));
           marcarICheck(document.getElementById('isDeclaracaoIdoneoArtigo2'));
           setTimeout(function(){
-            if(btnS&&!btnS._omegaClicado){btnS._omegaClicado=true;btnS.removeAttribute('disabled');btnS.click();setTimeout(function(){if(btnS)btnS._omegaClicado=false;},3000);}
-            setTimeout(callback,1000);
+            if(btnS&&!btnS._omegaClicado){
+              btnS._omegaClicado=true;btnS.removeAttribute('disabled');btnS.click();
+              setTimeout(function(){if(btnS)btnS._omegaClicado=false;},3000);
+            }
+            if(window.OmegaMatarTimers) window.OmegaMatarTimers();
+            window._setTimeoutNativo ? window._setTimeoutNativo(callback,2000) : setTimeout(callback,2000);
           },800);
         }
       },600);
@@ -600,9 +607,9 @@
                 var s=document.querySelector('.btn-salvar-contato');
                 if(s&&!s._omegaClicado){
                   s._omegaClicado=true;s.click();
-                  if(window.OmegaMatarTimers) setTimeout(window.OmegaMatarTimers,500);
                   setTimeout(function(){if(s)s._omegaClicado=false;},3000);
-                  callback(true);
+                  if(window.OmegaMatarTimers) window.OmegaMatarTimers();
+                  window._setTimeoutNativo ? window._setTimeoutNativo(function(){callback(true);},1500) : setTimeout(function(){callback(true);},1500);
                 }
                 else if(!s)callback(false);
               },600);
