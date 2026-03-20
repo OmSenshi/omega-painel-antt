@@ -217,7 +217,7 @@
             U.box(st,true,'3/3 — RT...');
             adicionarRT(st,function(){U.box(st,true,'Automacao CPF concluida!');});
           },1500);
-        },'RES');
+        },'COR'); // CPF usa COR (Correspondencia) — modal nao tem RES
       },1200);
     });
   }
@@ -316,10 +316,16 @@
       var campoCep=document.getElementById('Cep');
       if(!campoCep){U.box(st,false,'Modal de endereco nao abriu.');callback();return;}
 
-      // Seta tipo de endereco com dupla tentativa
+      // Seta tipo de endereco com dupla tentativa e fallback para COR
       function setarTipo(){
         var ct=document.getElementById('CodigoTipoEndereco');
-        if(ct){ ct.value=tipo; ct.selectedIndex=Array.from(ct.options).findIndex(function(o){return o.value===tipo;}); jqRef(ct).trigger('change'); }
+        if(!ct) return;
+        // Verifica se o tipo existe no select
+        var existe = Array.from(ct.options).some(function(o){return o.value===tipo;});
+        var tipoFinal = existe ? tipo : 'COR';
+        ct.value=tipoFinal;
+        ct.selectedIndex=Array.from(ct.options).findIndex(function(o){return o.value===tipoFinal;});
+        jqRef(ct).trigger('change');
       }
       setarTipo();
       setTimeout(setarTipo, 400);
