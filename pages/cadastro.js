@@ -381,42 +381,83 @@
   function adicionarContato(tipoVal,contatoVal,callback){
     var btn=document.querySelector('button[data-action*="ContatoPedido/Novo"]');
     if(!btn){ callback(false); return; }
-    if(btn._omegaClicado){ ST(function(){btn._omegaClicado=false;},100); }
+    // Reseta flag se ainda ativa de chamada anterior
+    if(btn._omegaClicado){ btn._omegaClicado=false; }
     btn._omegaClicado=true;
     ST(function(){btn._omegaClicado=false;},8000);
     btn.click();
     ST(function(){
-      var t=document.getElementById('CodigoTipoContato'),c=document.getElementById('Contato');
-      if(!t||!c){ callback(false); return; }
+      var t=document.getElementById('CodigoTipoContato');
+      if(!t){ callback(false); return; }
+      // Seleciona o tipo
       t.value=tipoVal; jqR(t).trigger('change');
       ST(function(){
-        t.value=tipoVal; jqR(t).trigger('change'); // confirma tipo
+        // Confirma tipo e re-busca campo (portal pode substituir o input ao mudar tipo)
+        t.value=tipoVal; jqR(t).trigger('change');
         ST(function(){
-          c.value=''; c.focus(); c.dispatchEvent(new Event('focus',{bubbles:true}));
+          // Re-busca referencia ao campo apos mudanca de tipo
+          var c=document.getElementById('Contato');
+          if(!c){ callback(false); return; }
+          c.value=''; c.focus(); c.click();
+          c.dispatchEvent(new Event('focus',{bubbles:true}));
           var chars=contatoVal.split(''),i=0;
           function proxChar(){
             if(i>=chars.length){
+              // Re-busca novamente antes de verificar valor
+              c=document.getElementById('Contato');
               c.dispatchEvent(new Event('change',{bubbles:true}));
               c.dispatchEvent(new Event('blur',{bubbles:true}));
               ST(function(){
+                // Verifica se campo tem valor antes de salvar
+                c=document.getElementById('Contato');
+                if(!c||!c.value||c.value.trim()===''){
+                  // Campo vazio — fecha modal e reporta erro
+                  var btnFechar=document.querySelector('#manterContatoForm .close, .modal.show .close, .modal.show [data-dismiss="modal"]');
+                  if(btnFechar) btnFechar.click();
+                  // Remove backdrop se ficou preso
+                  ST(function(){
+                    document.querySelectorAll('.modal-backdrop').forEach(function(el){el.remove();});
+                    document.body.classList.remove('modal-open');
+                  },300);
+                  callback(false);
+                  return;
+                }
                 var s=document.querySelector('.btn-salvar-contato');
                 if(s&&!s._omegaClicado){
                   s._omegaClicado=true; s.click();
                   ST(function(){s._omegaClicado=false;},5000);
-                  matarTimers();
-                  ST(function(){callback(true);},1500);
+                  // Verifica se modal fechou (sucesso) ou ficou aberto (erro de validacao)
+                  ST(function(){
+                    var modalAberto=document.querySelector('#manterContatoForm');
+                    var visivel=modalAberto&&(modalAberto.closest('.modal.show')||document.querySelector('.modal.show #manterContatoForm'));
+                    if(visivel){
+                      // Modal ainda aberto = erro de validacao — fecha e reporta
+                      var btnFechar2=document.querySelector('.modal.show .close, .modal.show [data-dismiss="modal"]');
+                      if(btnFechar2) btnFechar2.click();
+                      ST(function(){
+                        document.querySelectorAll('.modal-backdrop').forEach(function(el){el.remove();});
+                        document.body.classList.remove('modal-open');
+                      },300);
+                      callback(false);
+                    } else {
+                      matarTimers();
+                      ST(function(){callback(true);},1500);
+                    }
+                  },1500);
                 } else if(!s) callback(false);
               },600);
               return;
             }
+            // Re-busca campo a cada caractere (previne referencia stale)
+            c=document.getElementById('Contato');
             var ch=chars[i]; c.value+=ch;
             c.dispatchEvent(new Event('input',{bubbles:true}));
             c.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
             i++; ST(proxChar,60);
           }
           proxChar();
-        },500);
-      },400);
+        },600); // delay maior apos confirmacao do tipo
+      },500);
     },1200);
   }
 
