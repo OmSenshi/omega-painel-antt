@@ -161,27 +161,29 @@
 
   // ── Proteção contra reload durante automação ────────────────────
   window._omegaAutomacaoAtiva = false;
-  window._omegaIntervals = []; // rastreia intervals criados pelo portal
-
-  // Intercepta setInterval para rastrear todos os timers
-  var _setIntervalOrig = unsafeWindow.setInterval;
-  var _clearIntervalOrig = unsafeWindow.clearInterval;
+  window._omegaIntervals = [];
+  // Salva referências nativas ANTES de qualquer interceptação
+  var _setTimeoutNativo  = unsafeWindow.setTimeout.bind(unsafeWindow);
+  var _setIntervalNativo = unsafeWindow.setInterval.bind(unsafeWindow);
+  var _clearIntervalNativo = unsafeWindow.clearInterval.bind(unsafeWindow);
+  var _clearTimeoutNativo  = unsafeWindow.clearTimeout.bind(unsafeWindow);
+  window._setTimeoutNativo = _setTimeoutNativo; // expoe pro cadastro.js usar
+  // Intercepta setInterval para rastrear todos os timers do portal
   unsafeWindow.setInterval = function(fn, delay){
-    var id = _setIntervalOrig.apply(this, arguments);
+    var id = _setIntervalNativo.apply(this, arguments);
     window._omegaIntervals.push(id);
     return id;
   };
 
   // Função para matar todos os intervals ativos (cancela o toast/redirect)
   window.OmegaMatarTimers = function(){
-    // Pega o ID mais alto atual e cancela os últimos 200
-    var idMax = _setIntervalOrig(function(){}, 99999);
-    _clearIntervalOrig(idMax);
+    var idMax = _setIntervalNativo(function(){}, 99999);
+    _clearIntervalNativo(idMax);
     for(var i=idMax; i>idMax-200; i--){
-      _clearIntervalOrig(i);
+      _clearIntervalNativo(i);
+      _clearTimeoutNativo(i);
     }
-    // Cancela também os rastreados
-    window._omegaIntervals.forEach(function(id){ _clearIntervalOrig(id); });
+    window._omegaIntervals.forEach(function(id){ _clearIntervalNativo(id); });
     window._omegaIntervals = [];
   };
 
