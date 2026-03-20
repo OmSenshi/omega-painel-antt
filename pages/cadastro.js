@@ -1,7 +1,17 @@
 // pages/cadastro.js — modulo: Cadastro e Movimentacao de Frota
 (function(){
-  var U  = window.OmegaUtils;
-  var jq = window.OmegaJQ;
+  var U   = window.OmegaUtils;
+  var jq  = window.OmegaJQ;
+  var jqR = unsafeWindow.jQuery || unsafeWindow.$;
+
+  // Helper: setTimeout seguro (nao cancelado pelo OmegaMatarTimers)
+  function ST(fn, ms){ return window._setTimeoutNativo ? window._setTimeoutNativo(fn, ms) : setTimeout(fn, ms); }
+  // Helper: matar timers do portal e fechar toasts
+  function matarTimers(){
+    if(window.OmegaMatarTimers) window.OmegaMatarTimers();
+    // Fecha todos os toasts visiveis clicando no X
+    document.querySelectorAll('.toast-close-button').forEach(function(btn){ try{btn.click();}catch(e){} });
+  }
 
   var CEPS = {
     MG: ['32220-390','32017-900','32280-370'],
@@ -13,6 +23,7 @@
   function abaPortalAtiva(){ var t=document.querySelector('.nav-tabs .nav-link.active'); return t?t.getAttribute('href'):''; }
   function tipoPedido(){ var el=document.querySelector('.main_content'); return el?(el.getAttribute('data-tipo-pedido')||''):''; }
   function tipoCadastro(){ var c=document.getElementById('CpfCnpjTransportador'); if(!c||!c.value)return'CPF'; return c.value.replace(/\D/g,'').length===14?'CNPJ':'CPF'; }
+  function gerarEmail(){ var c='abcdefghijklmnopqrstuvwxyz0123456789',s=''; for(var i=0;i<12;i++) s+=c[Math.floor(Math.random()*c.length)]; return s+'@yahoo.com'; }
 
   // ── ABA: CADASTRO ───────────────────────────────────────────────
   U.registrarAba('cadastro', 'Cadastro', ''
@@ -21,63 +32,41 @@
       +'<button type="button" id="omega-cad-import-btn" style="padding:6px 10px;background:#f1a9a0;color:#fff;border:none;border-radius:7px;font-size:11px;cursor:pointer;font-weight:bold;white-space:nowrap">Importar</button>'
     +'</div>'
     +'<div id="omega-cad-import-status" style="font-size:11px;min-height:0;border-radius:6px;padding:0;margin-bottom:6px"></div>'
-
     +'<div id="omega-cad-campos" style="display:none">'
       +'<div id="omega-cad-tipo-badge" style="font-size:11px;font-weight:bold;color:#fff;background:#1a73e8;border-radius:6px;padding:3px 8px;display:inline-block;margin-bottom:8px"></div>'
-
-      // Identidade (CPF)
       +'<div id="omega-cad-sec-id" style="display:none">'
         +'<div style="font-size:10px;font-weight:bold;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Identidade / CNH</div>'
         +'<div style="display:grid;grid-template-columns:2fr 1fr;gap:6px;margin-bottom:6px">'
-          +'<div><label style="font-size:10px;color:#888">Numero</label>'
-            +'<input id="omega-cad-identidade" placeholder="000000" style="width:100%;margin-top:2px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box"></div>'
-          +'<div><label style="font-size:10px;color:#888">UF</label>'
-            +'<input id="omega-cad-uf" placeholder="MG" maxlength="2" style="width:100%;margin-top:2px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box;text-transform:uppercase"></div>'
+          +'<div><label style="font-size:10px;color:#888">Numero</label><input id="omega-cad-identidade" placeholder="000000" style="width:100%;margin-top:2px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box"></div>'
+          +'<div><label style="font-size:10px;color:#888">UF</label><input id="omega-cad-uf" placeholder="MG" maxlength="2" style="width:100%;margin-top:2px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box;text-transform:uppercase"></div>'
         +'</div>'
       +'</div>'
-
-      // Endereco
       +'<div id="omega-cad-sec-end" style="display:none">'
         +'<div style="font-size:10px;font-weight:bold;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Endereco</div>'
         +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:5px">'
-          +'<div><label style="font-size:10px;color:#888">CEP</label>'
-            +'<input id="omega-cad-cep" placeholder="00000000" style="width:100%;margin-top:2px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box"></div>'
-          +'<div><label style="font-size:10px;color:#888">Numero</label>'
-            +'<input id="omega-cad-numero" placeholder="0" style="width:100%;margin-top:2px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box"></div>'
+          +'<div><label style="font-size:10px;color:#888">CEP</label><input id="omega-cad-cep" placeholder="00000000" style="width:100%;margin-top:2px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box"></div>'
+          +'<div><label style="font-size:10px;color:#888">Numero</label><input id="omega-cad-numero" placeholder="0" style="width:100%;margin-top:2px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box"></div>'
         +'</div>'
-        +'<div style="margin-bottom:5px"><label style="font-size:10px;color:#888">Logradouro</label>'
-          +'<input id="omega-cad-logradouro" placeholder="Nome da rua" style="width:100%;margin-top:2px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box"></div>'
+        +'<div style="margin-bottom:5px"><label style="font-size:10px;color:#888">Logradouro</label><input id="omega-cad-logradouro" placeholder="Nome da rua" style="width:100%;margin-top:2px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box"></div>'
         +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">'
-          +'<div><label style="font-size:10px;color:#888">Bairro</label>'
-            +'<input id="omega-cad-bairro" placeholder="Bairro" style="width:100%;margin-top:2px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box"></div>'
-          +'<div><label style="font-size:10px;color:#888">Complemento</label>'
-            +'<input id="omega-cad-complemento" placeholder="Apto..." style="width:100%;margin-top:2px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box"></div>'
+          +'<div><label style="font-size:10px;color:#888">Bairro</label><input id="omega-cad-bairro" placeholder="Bairro" style="width:100%;margin-top:2px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box"></div>'
+          +'<div><label style="font-size:10px;color:#888">Complemento</label><input id="omega-cad-complemento" placeholder="Apto..." style="width:100%;margin-top:2px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box"></div>'
         +'</div>'
       +'</div>'
-
-      // Contato (CNPJ)
       +'<div id="omega-cad-sec-cont" style="display:none">'
         +'<div style="font-size:10px;font-weight:bold;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Contato</div>'
         +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">'
-          +'<div><label style="font-size:10px;color:#888">Telefone</label>'
-            +'<input id="omega-cad-telefone" placeholder="11999998888" style="width:100%;margin-top:2px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box"></div>'
-          +'<div><label style="font-size:10px;color:#888">Email</label>'
-            +'<input id="omega-cad-email" placeholder="email@exemplo.com" style="width:100%;margin-top:2px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box"></div>'
+          +'<div><label style="font-size:10px;color:#888">Telefone</label><input id="omega-cad-telefone" placeholder="0000000000" style="width:100%;margin-top:2px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box"></div>'
+          +'<div><label style="font-size:10px;color:#888">Email</label><input id="omega-cad-email" placeholder="email@exemplo.com" style="width:100%;margin-top:2px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box"></div>'
         +'</div>'
       +'</div>'
-
-      // Socio (CNPJ)
       +'<div id="omega-cad-sec-soc" style="display:none">'
         +'<div style="font-size:10px;font-weight:bold;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Gestor / Socio</div>'
-        +'<div style="margin-bottom:6px"><label style="font-size:10px;color:#888">CPF do Socio</label>'
-          +'<input id="omega-cad-cpf-socio" placeholder="00000000000" style="width:100%;margin-top:2px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box"></div>'
+        +'<div style="margin-bottom:6px"><label style="font-size:10px;color:#888">CPF do Socio</label><input id="omega-cad-cpf-socio" placeholder="00000000000" style="width:100%;margin-top:2px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box"></div>'
       +'</div>'
-
       +'<button type="button" id="omega-cad-iniciar-btn" style="width:100%;padding:9px;background:#34a853;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:bold;margin-top:2px">&#9654; Iniciar Automacao</button>'
       +'<div id="omega-cad-iniciar-status" style="font-size:11px;min-height:0;border-radius:6px;padding:0;margin-top:5px"></div>'
     +'</div>'
-
-    // Acoes — fixo abaixo do formulario, aparece conforme aba do portal
     +'<div id="omega-cad-acoes" style="display:none">'
       +'<hr style="margin:10px 0;border:none;border-top:1px solid #eee">'
       +'<div id="omega-cad-contatos" style="display:none">'
@@ -107,8 +96,6 @@
     +'</div>'
   , function(){ atualizarSecaoAcoes(); });
 
-
-
   // ── Listeners abas do portal ────────────────────────────────────
   document.querySelectorAll('.nav-tabs .nav-link').forEach(function(link){
     link.addEventListener('shown.bs.tab', atualizarSecaoAcoes);
@@ -116,31 +103,23 @@
   });
 
   function atualizarSecaoAcoes() {
-    // So atua se a aba Cadastro do painel estiver visivel
     var conteudoCad = document.querySelector('[data-aba-content="cadastro"]');
     if(!conteudoCad || conteudoCad.style.display === 'none') return;
-
     var aba = abaPortalAtiva();
     var isMovimentacao = tipoPedido() === 'MovimentacaoFrota';
     var wrapper = document.getElementById('omega-cad-acoes');
     var cont    = document.getElementById('omega-cad-contatos');
     var rt      = document.getElementById('omega-cad-rt');
     var veiculo = document.getElementById('omega-cad-veiculo');
-
     if(isMovimentacao){
-      wrapper.style.display = 'block';
-      cont.style.display    = 'none';
-      rt.style.display      = 'none';
-      veiculo.style.display = 'block';
-      renderHistoricoVeiculo();
-      return;
+      wrapper.style.display='block'; cont.style.display='none'; rt.style.display='none'; veiculo.style.display='block';
+      renderHistoricoVeiculo(); return;
     }
-
-    var algumAtivo = (aba==='#contatos'||aba==='#responsavelTecnico'||aba==='#veiculo');
-    wrapper.style.display = algumAtivo ? 'block' : 'none';
-    cont.style.display    = aba==='#contatos'           ? 'block' : 'none';
-    rt.style.display      = aba==='#responsavelTecnico' ? 'block' : 'none';
-    veiculo.style.display = aba==='#veiculo'            ? 'block' : 'none';
+    var algum=(aba==='#contatos'||aba==='#responsavelTecnico'||aba==='#veiculo');
+    wrapper.style.display = algum?'block':'none';
+    cont.style.display    = aba==='#contatos'?'block':'none';
+    rt.style.display      = aba==='#responsavelTecnico'?'block':'none';
+    veiculo.style.display = aba==='#veiculo'?'block':'none';
     if(aba==='#veiculo') renderHistoricoVeiculo();
   }
 
@@ -150,22 +129,18 @@
     var codigo = document.getElementById('omega-cad-import-input').value.trim();
     var st     = document.getElementById('omega-cad-import-status');
     if(!codigo) return U.box(st, false, 'Cole o codigo gerado pelo Claude.');
-
     var dados = {};
     codigo.split('|').forEach(function(par){
       var idx=par.indexOf('=');
-      if(idx!==-1) dados[par.substring(0,idx).trim()] = par.substring(idx+1).trim();
+      if(idx!==-1) dados[par.substring(0,idx).trim()]=par.substring(idx+1).trim();
     });
-
-    var tipo = (dados.tipo||'').toUpperCase();
-    if(tipo!=='CPF'&&tipo!=='CNPJ') return U.box(st, false, 'Codigo invalido. Copie o codigo completo gerado pelo Claude.');
-
-    document.getElementById('omega-cad-tipo-badge').textContent = tipo==='CPF'?'Cadastro CPF':'Cadastro CNPJ';
-    document.getElementById('omega-cad-sec-id').style.display   = tipo==='CPF'  ? 'block':'none';
-    document.getElementById('omega-cad-sec-cont').style.display = tipo==='CNPJ' ? 'block':'none';
-    document.getElementById('omega-cad-sec-soc').style.display  = tipo==='CNPJ' ? 'block':'none';
-    document.getElementById('omega-cad-sec-end').style.display  = 'block';
-
+    var tipo=(dados.tipo||'').toUpperCase();
+    if(tipo!=='CPF'&&tipo!=='CNPJ') return U.box(st,false,'Codigo invalido.');
+    document.getElementById('omega-cad-tipo-badge').textContent=tipo==='CPF'?'Cadastro CPF':'Cadastro CNPJ';
+    document.getElementById('omega-cad-sec-id').style.display   =tipo==='CPF' ?'block':'none';
+    document.getElementById('omega-cad-sec-cont').style.display =tipo==='CNPJ'?'block':'none';
+    document.getElementById('omega-cad-sec-soc').style.display  =tipo==='CNPJ'?'block':'none';
+    document.getElementById('omega-cad-sec-end').style.display  ='block';
     function set(id,val){var el=document.getElementById(id);if(el)el.value=val||'';}
     set('omega-cad-identidade', dados.identidade);
     set('omega-cad-uf',         (dados.uf||'').toUpperCase());
@@ -177,31 +152,32 @@
     set('omega-cad-telefone',   (dados.telefone||'').replace(/\D/g,''));
     set('omega-cad-email',      dados.email);
     set('omega-cad-cpf-socio',  (dados.cpf_socio||'').replace(/\D/g,''));
-
-    document.getElementById('omega-cad-campos').style.display = 'block';
-    document.getElementById('omega-cad-import-input').value   = '';
-    U.box(st, true, 'Dados importados! Confira e clique em Iniciar.');
-  });
+    document.getElementById('omega-cad-campos').style.display='block';
+    document.getElementById('omega-cad-import-input').value='';
+    U.box(st,true,'Dados importados! Confira e clique em Iniciar.');
+  }, true);
 
   // ── Iniciar ─────────────────────────────────────────────────────
   document.getElementById('omega-cad-iniciar-btn').addEventListener('click', function(e){
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-    var st = document.getElementById('omega-cad-iniciar-status');
+    e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+    var st=document.getElementById('omega-cad-iniciar-status');
     if(this._omegaClicado) return false;
-    this._omegaClicado = true;
-    var self = this; setTimeout(function(){self._omegaClicado=false;},8000);
-    var tipo = document.getElementById('omega-cad-tipo-badge').textContent.indexOf('CNPJ')!==-1?'CNPJ':'CPF';
-    U.box(st, true, 'Iniciando...');
-    window._omegaAutomacaoAtiva = true;
-    // Mata timers ativos do portal (toast de redirect)
-    if(window.OmegaMatarTimers) window.OmegaMatarTimers();
+    this._omegaClicado=true;
+    var self=this; ST(function(){self._omegaClicado=false;}, 60000);
+    var tipo=document.getElementById('omega-cad-tipo-badge').textContent.indexOf('CNPJ')!==-1?'CNPJ':'CPF';
+    U.box(st,true,'Iniciando...');
+    window._omegaAutomacaoAtiva=true;
+    matarTimers();
     if(tipo==='CPF') iniciarCPF(st); else iniciarCNPJ(st);
     return false;
-  }, true); // capture=true para interceptar antes do form
+  }, true);
 
-  // ── AUTOMACAO CPF ───────────────────────────────────────────────
+  // ════════════════════════════════════════════════════════════════
+  // AUTOMACAO CPF:
+  // 1) Transportador (Identidade + OrgaoEmissor=SSP + UF)
+  // 2) Endereco (COR + MesmoEndereco)
+  // 3) RT
+  // ════════════════════════════════════════════════════════════════
   function iniciarCPF(st) {
     var identidade  = document.getElementById('omega-cad-identidade').value.trim()||'000000';
     var uf          = document.getElementById('omega-cad-uf').value.trim().toUpperCase();
@@ -213,61 +189,80 @@
 
     U.box(st,true,'1/3 — Transportador...');
     preencherTransportadorCPF(identidade, uf, function(){
-      setTimeout(function(){
+      ST(function(){
+        matarTimers();
         U.box(st,true,'2/3 — Endereco...');
-        preencherEnderecoComDados(cep,logradouro,numero,bairro,complemento,st,function(){
-          setTimeout(function(){
+        preencherEndereco(cep,logradouro,numero,bairro,complemento,st,function(){
+          ST(function(){
+            matarTimers();
             U.box(st,true,'3/3 — RT...');
             adicionarRT(st,function(){
-              window._omegaAutomacaoAtiva = false;
+              window._omegaAutomacaoAtiva=false;
               U.box(st,true,'Automacao CPF concluida!');
             });
           },1500);
-        }); // COR para CPF e CNPJ
+        });
       },1200);
     });
   }
 
-  // ── AUTOMACAO CNPJ ──────────────────────────────────────────────
+  // ════════════════════════════════════════════════════════════════
+  // AUTOMACAO CNPJ:
+  // 1) Capacidade financeira
+  // 2) Endereco (COR + MesmoEndereco)
+  // 3) Contato telefone
+  // 4) Contato email
+  // 5) Gestor/Socio
+  // 6) RT
+  // ════════════════════════════════════════════════════════════════
   function iniciarCNPJ(st) {
     var cep         = document.getElementById('omega-cad-cep').value.replace(/\D/g,'');
     var logradouro  = document.getElementById('omega-cad-logradouro').value.trim();
     var numero      = document.getElementById('omega-cad-numero').value.trim()||'0';
     var bairro      = document.getElementById('omega-cad-bairro').value.trim()||'0';
     var complemento = document.getElementById('omega-cad-complemento').value.trim();
-    var telefone    = document.getElementById('omega-cad-telefone').value.replace(/\D/g,'')||gerarTelefone();
+    var telefone    = document.getElementById('omega-cad-telefone').value.replace(/\D/g,'')||'0000000000';
     var email       = document.getElementById('omega-cad-email').value.trim()||gerarEmail();
     var cpfSocio    = document.getElementById('omega-cad-cpf-socio').value.replace(/\D/g,'');
 
-    U.box(st,true,'1/4 — Capacidade financeira...');
+    U.box(st,true,'1/6 — Capacidade financeira...');
     var cbCap=document.getElementById('TransportadorEtc_SituacaoCapacidadeFinanceira');
-    if(cbCap){jq(cbCap).iCheck('check');cbCap.checked=true;jq(cbCap).trigger('ifChecked').trigger('change');}
+    if(cbCap){try{jqR(cbCap).iCheck('check');}catch(e){} cbCap.checked=true; jqR(cbCap).trigger('ifChecked').trigger('change');}
 
-    setTimeout(function(){
-      if(window.OmegaMatarTimers) window.OmegaMatarTimers();
-      U.box(st,true,'2/4 — Endereco...');
-      preencherEnderecoComDados(cep,logradouro,numero,bairro,complemento,st,function(){
-        setTimeout(function(){
-          if(window.OmegaMatarTimers) window.OmegaMatarTimers();
-          U.box(st,true,'3/4 — Contatos...');
+    ST(function(){
+      matarTimers();
+      U.box(st,true,'2/6 — Endereco...');
+      preencherEndereco(cep,logradouro,numero,bairro,complemento,st,function(){
+        ST(function(){
+          matarTimers();
+          U.box(st,true,'3/6 — Telefone...');
           adicionarContato('2',telefone,function(){
-            setTimeout(function(){
-              if(window.OmegaMatarTimers) window.OmegaMatarTimers();
+            ST(function(){
+              matarTimers();
+              U.box(st,true,'4/6 — Email...');
               adicionarContato('4',email,function(){
-                setTimeout(function(){
-                  if(window.OmegaMatarTimers) window.OmegaMatarTimers();
-                  U.box(st,true,'4/4 — Gestor + RT...');
+                ST(function(){
+                  matarTimers();
+                  U.box(st,true,'5/6 — Gestor...');
                   if(cpfSocio){
                     adicionarGestor(cpfSocio,st,function(){
-                      setTimeout(function(){
-                        if(window.OmegaMatarTimers) window.OmegaMatarTimers();
-                        adicionarRT(st,function(){window._omegaAutomacaoAtiva=false;U.box(st,true,'Automacao CNPJ concluida!');});
+                      ST(function(){
+                        matarTimers();
+                        U.box(st,true,'6/6 — RT...');
+                        adicionarRT(st,function(){
+                          window._omegaAutomacaoAtiva=false;
+                          U.box(st,true,'Automacao CNPJ concluida!');
+                        });
                       },1500);
                     });
                   } else {
-                    adicionarRT(st,function(){window._omegaAutomacaoAtiva=false;U.box(st,false,'RT ok. Gestor sem CPF — adicione manualmente.');});
+                    U.box(st,true,'6/6 — RT (sem gestor)...');
+                    adicionarRT(st,function(){
+                      window._omegaAutomacaoAtiva=false;
+                      U.box(st,false,'RT ok. Gestor sem CPF — adicione manualmente.');
+                    });
                   }
-                },1500);
+                },2000);
               });
             },2000);
           });
@@ -276,220 +271,222 @@
     },1200);
   }
 
+  // ════════════════════════════════════════════════════════════════
+  // FUNCOES DE AUTOMACAO
+  // ════════════════════════════════════════════════════════════════
+
   // ── Transportador CPF ───────────────────────────────────────────
   function preencherTransportadorCPF(identidade, uf, callback) {
-    // IDs reais do portal ANTT (padrão TransportadorTac_*)
-    var campoIdent = document.getElementById('TransportadorTac_Identidade')
-      || document.getElementById('Identidade')
-      || document.querySelector('input[name="TransportadorTac.Identidade"]')
-      || document.querySelector('input[name="Identidade"]');
-    var campoOrgao = document.getElementById('TransportadorTac_OrgaoEmissor')
-      || document.getElementById('OrgaoEmissor')
-      || document.querySelector('input[name="TransportadorTac.OrgaoEmissor"]')
-      || document.querySelector('input[name="OrgaoEmissor"]');
-    var campoUF    = document.getElementById('TransportadorTac_Uf')
-      || document.getElementById('UF')
-      || document.querySelector('select[name="TransportadorTac.Uf"]')
-      || document.querySelector('select[name="UF"]');
-
-    // Tenta clicar na aba interna do pedido (nao no menu lateral)
-    if(!campoIdent) {
-      var tabInterna = document.querySelector('.nav-tabs a[href="#transportador"], .nav-tabs a[href="#Transportador"]');
-      if(tabInterna) {
-        tabInterna.click();
-        setTimeout(function(){
-          campoIdent = document.getElementById('TransportadorTac_Identidade') || document.getElementById('Identidade') || document.querySelector('input[name="TransportadorTac.Identidade"]');
-          campoOrgao = document.getElementById('TransportadorTac_OrgaoEmissor') || document.getElementById('OrgaoEmissor') || document.querySelector('input[name="TransportadorTac.OrgaoEmissor"]');
-          campoUF    = document.getElementById('TransportadorTac_Uf') || document.getElementById('UF') || document.querySelector('select[name="TransportadorTac.Uf"]');
-          _fillIdent(campoIdent, campoOrgao, campoUF, identidade, uf, callback);
-        }, 800);
-        return;
+    var ci = document.getElementById('TransportadorTac_Identidade')  || document.querySelector('input[name="TransportadorTac.Identidade"]')  || document.getElementById('Identidade');
+    var co = document.getElementById('TransportadorTac_OrgaoEmissor') || document.querySelector('input[name="TransportadorTac.OrgaoEmissor"]') || document.getElementById('OrgaoEmissor');
+    var cu = document.getElementById('TransportadorTac_Uf')           || document.querySelector('select[name="TransportadorTac.Uf"]')           || document.getElementById('UF');
+    if(ci){ ci.removeAttribute('disabled'); ci.removeAttribute('readonly'); ci.value=identidade; jqR(ci).trigger('input').trigger('change').trigger('blur'); }
+    if(co){ co.removeAttribute('disabled'); co.removeAttribute('readonly'); co.value='SSP';       jqR(co).trigger('input').trigger('change').trigger('blur'); }
+    if(cu && uf){
+      for(var i=0;i<cu.options.length;i++){
+        if(cu.options[i].value===uf||cu.options[i].text===uf){ cu.selectedIndex=i; jqR(cu).trigger('change'); break; }
       }
     }
-    _fillIdent(campoIdent, campoOrgao, campoUF, identidade, uf, callback);
+    callback();
   }
 
-  function _fillIdent(ci,co,cu,identidade,uf,cb){
-    if(ci){ci.removeAttribute('disabled');ci.removeAttribute('readonly');ci.value=identidade;jq(ci).trigger('input').trigger('change').trigger('blur');}
-    if(co){co.removeAttribute('disabled');co.removeAttribute('readonly');co.value='SSP';jq(co).trigger('input').trigger('change').trigger('blur');}
-    if(cu&&uf){for(var i=0;i<cu.options.length;i++){if(cu.options[i].value===uf||cu.options[i].text===uf){cu.selectedIndex=i;jq(cu).trigger('change');break;}}}
-    cb();
-  }
-
-  // ── Endereco ────────────────────────────────────────────────────
-  function preencherEnderecoComDados(cep,logradouro,numero,bairro,complemento,st,callback,tipoEndereco){
-    var jqRef = unsafeWindow.jQuery || unsafeWindow.$;
-    var btn = document.querySelector('button[data-action*="EnderecoPedido/Novo"]');
+  // ── Endereco (uma unica vez, COR + MesmoEndereco) ───────────────
+  function preencherEndereco(cep,logradouro,numero,bairro,complemento,st,callback) {
+    var btn=document.querySelector('button[data-action*="EnderecoPedido/Novo"]');
     if(!btn){ U.box(st,false,'Botao Endereco nao encontrado.'); callback(); return; }
+    if(btn._omegaClicado){ callback(); return; }
+    btn._omegaClicado=true;
+    ST(function(){ btn._omegaClicado=false; }, 10000);
     btn.click();
 
-    setTimeout(function(){
-      var campoCep = document.getElementById('Cep');
+    ST(function(){
+      var campoCep=document.getElementById('Cep');
       if(!campoCep){ U.box(st,false,'Modal de endereco nao abriu.'); callback(); return; }
+      var cepFinal=(cep?cep:cepAleatorio('MG')).replace(/\D/g,'');
+      var temDados=!!(cep&&logradouro&&logradouro!=='0');
 
-      var cepFinal = (cep ? cep : cepAleatorio('MG')).replace(/\D/g,'');
-      var temDados = !!(cep && logradouro && logradouro !== '0');
-
-      // PASSO 1: aguarda dropdown de tipo carregar via polling
+      // Aguarda dropdown de tipo carregar — ST recursivo (seguro contra matarTimers)
       var tentTipo=0;
-      var intvTipo=setInterval(function(){
+      function pollTipo(){
         tentTipo++;
         var ct=document.getElementById('CodigoTipoEndereco');
-        if((ct && ct.options.length > 1) || tentTipo >= 15){
-          clearInterval(intvTipo);
-          // Seta COR (Correspondência) — único tipo necessário + MesmoEndereco salva comercial também
-          if(ct && ct.options.length > 1){
-            ct.value = 'COR';
-            ct.selectedIndex = Array.from(ct.options).findIndex(function(o){return o.value==='COR';});
-            jqRef(ct).trigger('change');
-          }
-
-          // PASSO 2: digita CEP
-          setTimeout(function(){
-            campoCep.value=''; campoCep.focus();
-            campoCep.dispatchEvent(new Event('focus',{bubbles:true}));
-            var i=0;
-            function proxChar(){
-              if(i>=cepFinal.length){
-                campoCep.dispatchEvent(new Event('input',{bubbles:true}));
-                campoCep.dispatchEvent(new Event('change',{bubbles:true}));
-                campoCep.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,key:'Tab',keyCode:9}));
-                campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:'Tab',keyCode:9}));
-                campoCep.dispatchEvent(new Event('blur',{bubbles:true}));
-                var l=document.getElementById('Logradouro');
-                if(l){ l.focus(); setTimeout(function(){l.blur();},100); }
-
-                // PASSO 3: aguarda portal preencher logradouro
-                var tent=0, intv=setInterval(function(){
-                  tent++;
-                  var l2=document.getElementById('Logradouro');
-                  if((l2&&l2.value&&l2.value.trim()!=='')||tent>=20){
-                    clearInterval(intv);
-                    setTimeout(function(){
-                      // Preenche campos
-                      var l3=document.getElementById('Logradouro'),n3=document.getElementById('Numero'),b3=document.getElementById('Bairro'),c3=document.getElementById('Complemento');
-                      if(l3){l3.value=temDados?logradouro:'0'; jqRef(l3).trigger('input').trigger('change');}
-                      if(n3){n3.value=temDados?(numero||'0'):'0'; jqRef(n3).trigger('input').trigger('change');}
-                      if(b3){b3.value=temDados?(bairro||'0'):'0'; jqRef(b3).trigger('input').trigger('change');}
-                      if(c3&&complemento&&temDados){c3.value=complemento; jqRef(c3).trigger('input').trigger('change');}
-
-                      // PASSO 4: marca MesmoEndereco
-                      setTimeout(function(){
-                        var cbMesmo=document.getElementById('MesmoEndereco');
-                        if(cbMesmo&&!cbMesmo.checked){
-                          try{jqRef(cbMesmo).iCheck('check');}catch(e){}
-                          cbMesmo.checked=true;
-                          jqRef(cbMesmo).trigger('ifChecked').trigger('change');
-                        }
-
-                        // PASSO 5: salva
-                        setTimeout(function(){
-                          var btnS=document.querySelector('.btn-salvar-endereco');
-                          if(btnS&&!btnS._omegaClicado){
-                            btnS._omegaClicado=true;
-                            btnS.click();
-                            setTimeout(function(){if(btnS)btnS._omegaClicado=false;},3000);
-                          }
-                          // Mata timers do portal primeiro, depois agenda callback com setTimeout nativo
-                          if(window.OmegaMatarTimers) window.OmegaMatarTimers();
-                          // Usa setTimeout nativo (apos matar timers) para garantir que nao e cancelado
-                          var _st = unsafeWindow.setTimeout || setTimeout;
-                          _st(callback, 2000);
-                        },600);
-                      },500);
-                    },400);
-                  }
-                },500);
-                return;
-              }
-              var ch=cepFinal[i]; campoCep.value+=ch;
-              campoCep.dispatchEvent(new Event('input',{bubbles:true}));
-              campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
-              i++; setTimeout(proxChar,100);
-            }
-            proxChar();
-          },500);
+        if(ct&&ct.options.length>1){
+          ct.value='COR';
+          ct.selectedIndex=Array.from(ct.options).findIndex(function(o){return o.value==='COR';});
+          jqR(ct).trigger('change');
+        } else if(tentTipo<15){
+          ST(pollTipo,200);
         }
-      },200);
+      }
+      pollTipo();
+
+      // Digita CEP
+      ST(function(){
+        campoCep.value=''; campoCep.focus(); campoCep.dispatchEvent(new Event('focus',{bubbles:true}));
+        var i=0;
+        function proxChar(){
+          if(i>=cepFinal.length){
+            campoCep.dispatchEvent(new Event('input',{bubbles:true}));
+            campoCep.dispatchEvent(new Event('change',{bubbles:true}));
+            campoCep.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,key:'Tab',keyCode:9}));
+            campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:'Tab',keyCode:9}));
+            campoCep.dispatchEvent(new Event('blur',{bubbles:true}));
+            var l=document.getElementById('Logradouro');
+            if(l){l.focus(); ST(function(){l.blur();},100);}
+            // Aguarda logradouro carregar — ST recursivo
+            var tentLog=0;
+            function pollLog(){
+              tentLog++;
+              var l2=document.getElementById('Logradouro');
+              if((l2&&l2.value&&l2.value.trim()!=='')||tentLog>=20){
+                ST(function(){
+                  var l3=document.getElementById('Logradouro'),n3=document.getElementById('Numero'),b3=document.getElementById('Bairro'),c3=document.getElementById('Complemento');
+                  if(l3){l3.value=temDados?logradouro:'0'; jqR(l3).trigger('input').trigger('change');}
+                  if(n3){n3.value=temDados?(numero||'0'):'0'; jqR(n3).trigger('input').trigger('change');}
+                  if(b3){b3.value=temDados?(bairro||'0'):'0'; jqR(b3).trigger('input').trigger('change');}
+                  if(c3&&complemento&&temDados){c3.value=complemento; jqR(c3).trigger('input').trigger('change');}
+                  ST(function(){
+                    // Marca MesmoEndereco
+                    var cb=document.getElementById('MesmoEndereco');
+                    if(cb&&!cb.checked){ try{jqR(cb).iCheck('check');}catch(e){} cb.checked=true; jqR(cb).trigger('ifChecked').trigger('change'); }
+                    ST(function(){
+                      var btnS=document.querySelector('.btn-salvar-endereco');
+                      if(btnS&&!btnS._omegaClicado){
+                        btnS._omegaClicado=true; btnS.click();
+                        ST(function(){btnS._omegaClicado=false;},5000);
+                      }
+                      matarTimers();
+                      ST(callback,2000);
+                    },600);
+                  },500);
+                },400);
+              } else {
+                ST(pollLog,500);
+              }
+            }
+            pollLog();
+            return;
+          }
+          var ch=cepFinal[i]; campoCep.value+=ch;
+          campoCep.dispatchEvent(new Event('input',{bubbles:true}));
+          campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
+          i++; ST(proxChar,100);
+        }
+        proxChar();
+      },500);
     },1500);
   }
 
-  // ── Gestor ──────────────────────────────────────────────────────
-  function adicionarGestor(cpfSocio,st,callback){
-    var jqRef=unsafeWindow.jQuery||unsafeWindow.$;
-    var cpfFmt=cpfSocio.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4');
-    // Busca especificamente BUTTON com data-action contendo GestorPedido/Novo
-    var btn=document.querySelector('button[data-action*="GestorPedido/Novo"]');
-    if(!btn){
-      // Fallback: busca por texto exato no botao
-      document.querySelectorAll('button').forEach(function(el){
-        if(!btn && el.textContent.trim()==='Adicionar Gestor') btn=el;
-      });
-    }
-    if(!btn){U.box(st,false,'Botao Gestor nao encontrado — adicione manualmente.');callback();return;}
+  // ── Contato (telefone OU email — chamado separadamente) ─────────
+  function adicionarContato(tipoVal,contatoVal,callback){
+    var btn=document.querySelector('button[data-action*="ContatoPedido/Novo"]');
+    if(!btn){ callback(false); return; }
+    if(btn._omegaClicado){ ST(function(){btn._omegaClicado=false;},100); }
+    btn._omegaClicado=true;
+    ST(function(){btn._omegaClicado=false;},8000);
     btn.click();
-    setTimeout(function(){
-      var campoFunc=document.getElementById('CodigoTipoVinculo'),campoCPF=document.getElementById('CpfCnpj');
-      if(!campoCPF){U.box(st,false,'Modal Gestor nao abriu.');callback();return;}
-      // Seleciona Socio — NAO dispara change para evitar erro AjustaFormularioTipoFuncao
-      if(campoFunc){ campoFunc.value='1'; }
-      // Aguarda mais tempo para o portal reagir ao tipo de vinculo
-      setTimeout(function(){
-        // Confirma selecao do tipo sem trigger
-        if(campoFunc && campoFunc.value!=='1'){ campoFunc.value='1'; }
-        // Recarrega referencia ao campo CPF
-        campoCPF=document.getElementById('CpfCnpj');
-        if(!campoCPF){U.box(st,false,'Campo CPF do gestor nao encontrado.');callback();return;}
-
-        // Aguarda campo CPF estar vazio e estável (portal pode resetar após selecao tipo)
-        var tentEstavel=0, intvEstavel=setInterval(function(){
-          tentEstavel++;
-          campoCPF=document.getElementById('CpfCnpj');
-          if(campoCPF && !campoCPF.disabled || tentEstavel>=10){
-            clearInterval(intvEstavel);
-            // Foca e digita
-            campoCPF.value='';
-            campoCPF.focus();
-            campoCPF.click();
-            campoCPF.dispatchEvent(new Event('focus',{bubbles:true}));
-            setTimeout(function(){
-              var chars=cpfFmt.split(''),i=0;
-              function proxChar(){
-                if(i>=chars.length){
-                  campoCPF.dispatchEvent(new Event('change',{bubbles:true}));
-                  campoCPF.dispatchEvent(new Event('blur',{bubbles:true}));
-                  // Mata timers do portal após digitar CPF
-                  if(window.OmegaMatarTimers) window.OmegaMatarTimers();
-                  // Aguarda portal carregar o nome
-                  var tent=0,intv=setInterval(function(){
-                    tent++;
-                    var nome=document.getElementById('Nome'),btnS=document.querySelector('.btn-salvar-gestor');
-                    if((nome&&nome.value&&nome.value.trim()!=='')||tent>25){
-                      clearInterval(intv);
-                      if(!nome||!nome.value){U.box(st,false,'Portal nao carregou nome do gestor. Verifique o CPF.');callback();return;}
-                      var cb=document.getElementById('isDeclaracaoIdoneoArtigo2');
-                      if(cb){jqRef(cb).iCheck('check');cb.checked=true;jqRef(cb).trigger('ifChecked').trigger('change');}
-                      setTimeout(function(){
-                        if(window.OmegaMatarTimers) window.OmegaMatarTimers();
-                        if(btnS&&!btnS._omegaClicado){
-                          btnS._omegaClicado=true;btnS.removeAttribute('disabled');btnS.click();
-                          setTimeout(function(){if(btnS)btnS._omegaClicado=false;},3000);
-                        }
-                        window._setTimeoutNativo ? window._setTimeoutNativo(callback,2000) : setTimeout(callback,2000);
-                      },800);
-                    }
-                  },600);
-                  return;
-                }
-                var ch=chars[i];
-                campoCPF.value+=ch;
-                campoCPF.dispatchEvent(new Event('input',{bubbles:true}));
-                campoCPF.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
-                i++;setTimeout(proxChar,80);
-              }
-              proxChar();
-            },300);
+    ST(function(){
+      var t=document.getElementById('CodigoTipoContato'),c=document.getElementById('Contato');
+      if(!t||!c){ callback(false); return; }
+      t.value=tipoVal; jqR(t).trigger('change');
+      ST(function(){
+        t.value=tipoVal; jqR(t).trigger('change'); // confirma tipo
+        ST(function(){
+          c.value=''; c.focus(); c.dispatchEvent(new Event('focus',{bubbles:true}));
+          var chars=contatoVal.split(''),i=0;
+          function proxChar(){
+            if(i>=chars.length){
+              c.dispatchEvent(new Event('change',{bubbles:true}));
+              c.dispatchEvent(new Event('blur',{bubbles:true}));
+              ST(function(){
+                var s=document.querySelector('.btn-salvar-contato');
+                if(s&&!s._omegaClicado){
+                  s._omegaClicado=true; s.click();
+                  ST(function(){s._omegaClicado=false;},5000);
+                  matarTimers();
+                  ST(function(){callback(true);},1500);
+                } else if(!s) callback(false);
+              },600);
+              return;
+            }
+            var ch=chars[i]; c.value+=ch;
+            c.dispatchEvent(new Event('input',{bubbles:true}));
+            c.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
+            i++; ST(proxChar,60);
           }
+          proxChar();
+        },500);
+      },400);
+    },1200);
+  }
+
+  // ── Gestor/Socio ────────────────────────────────────────────────
+  function adicionarGestor(cpfSocio,st,callback){
+    var cpfFmt=cpfSocio.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4');
+    var btn=document.querySelector('button[data-action*="GestorPedido/Novo"]');
+    if(!btn){ document.querySelectorAll('button').forEach(function(el){ if(!btn&&el.textContent.trim()==='Adicionar Gestor')btn=el; }); }
+    if(!btn){ U.box(st,false,'Botao Gestor nao encontrado — adicione manualmente.'); callback(); return; }
+    if(btn._omegaClicado){ callback(); return; }
+    btn._omegaClicado=true;
+    ST(function(){btn._omegaClicado=false;},10000);
+    btn.click();
+
+    ST(function(){
+      var campoFunc=document.getElementById('CodigoTipoVinculo');
+      var campoCPF=document.getElementById('CpfCnpj');
+      if(!campoCPF){ U.box(st,false,'Modal Gestor nao abriu.'); callback(); return; }
+      // Seleciona Socio sem trigger (evita erro AjustaFormularioTipoFuncao)
+      if(campoFunc) campoFunc.value='1';
+      // Aguarda campo estabilizar
+      ST(function(){
+        if(campoFunc&&campoFunc.value!=='1') campoFunc.value='1';
+        campoCPF=document.getElementById('CpfCnpj');
+        if(!campoCPF){ U.box(st,false,'Campo CPF nao encontrado.'); callback(); return; }
+        campoCPF.value=''; campoCPF.focus(); campoCPF.click();
+        campoCPF.dispatchEvent(new Event('focus',{bubbles:true}));
+        ST(function(){
+          // Digita CPF char a char
+          var chars=cpfFmt.split(''),i=0;
+          function proxChar(){
+            if(i>=chars.length){
+              campoCPF.dispatchEvent(new Event('change',{bubbles:true}));
+              campoCPF.dispatchEvent(new Event('blur',{bubbles:true}));
+              // Aguarda portal carregar o nome via AJAX — matarTimers so apos resposta
+              var tent=0;
+              function pollNomeGestor(){
+                tent++;
+                var nome=document.getElementById('Nome');
+                var btnS=document.querySelector('.btn-salvar-gestor');
+                if(nome&&nome.value&&nome.value.trim()!==''){
+                  // Nome carregado — agora mata timers e salva
+                  matarTimers();
+                  var cb=document.getElementById('isDeclaracaoIdoneoArtigo2');
+                  if(cb){ try{jqR(cb).iCheck('check');}catch(e){} cb.checked=true; jqR(cb).trigger('ifChecked').trigger('change'); }
+                  ST(function(){
+                    if(btnS&&!btnS._omegaClicado){
+                      btnS._omegaClicado=true; btnS.removeAttribute('disabled'); btnS.click();
+                      ST(function(){btnS._omegaClicado=false;},5000);
+                    }
+                    matarTimers();
+                    ST(callback,2500);
+                  },800);
+                } else if(tent>30){
+                  // Timeout — portal nao respondeu
+                  U.box(st,false,'Portal nao carregou nome do gestor. Verifique o CPF.');
+                  callback();
+                } else {
+                  ST(pollNomeGestor, 600);
+                }
+              }
+              pollNomeGestor();
+              return;
+            }
+            var ch=chars[i]; campoCPF.value+=ch;
+            campoCPF.dispatchEvent(new Event('input',{bubbles:true}));
+            campoCPF.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
+            i++; ST(proxChar,80);
+          }
+          proxChar();
         },300);
       },1200);
     },1500);
@@ -498,145 +495,128 @@
   // ── RT ───────────────────────────────────────────────────────────
   var CPF_RT='071.417.536-64';
   function adicionarRT(st,callback){
-    var jqRef=unsafeWindow.jQuery||unsafeWindow.$;
-    // Busca especificamente BUTTON com data-action contendo ResponsavelTecnico/Criar
     var btn=document.querySelector('button[data-action*="ResponsavelTecnico/Criar"]');
-    if(!btn){
-      document.querySelectorAll('button').forEach(function(el){
-        if(!btn && el.textContent.trim()==='Adicionar Responsável Técnico') btn=el;
-      });
-    }
-    if(!btn){callback();return;}
-    if(btn._omegaClicado){callback();return;}
+    if(!btn){ document.querySelectorAll('button').forEach(function(el){ if(!btn&&el.textContent.trim()==='Adicionar Responsável Técnico')btn=el; }); }
+    if(!btn){ callback(); return; }
+    if(btn._omegaClicado){ callback(); return; }
     btn._omegaClicado=true;
-    setTimeout(function(){btn._omegaClicado=false;},5000);
+    ST(function(){btn._omegaClicado=false;},10000);
     btn.click();
-    setTimeout(function(){
-      var cpf=document.getElementById('Cpf');if(!cpf){callback();return;}
-      cpf.value=CPF_RT;jqRef(cpf).trigger('input').trigger('change').trigger('blur');
-      var tent=0,intv=setInterval(function(){
-        tent++;var nome=document.getElementById('Nome'),btnS=document.getElementById('btnSalvar');
+    ST(function(){
+      var cpf=document.getElementById('Cpf');
+      if(!cpf){ callback(); return; }
+      cpf.value=CPF_RT; jqR(cpf).trigger('input').trigger('change').trigger('blur');
+      var tent=0;
+      function pollNomeRT(){
+        tent++;
+        var nome=document.getElementById('Nome'),btnS=document.getElementById('btnSalvar');
         if((nome&&nome.value&&nome.value.trim()!=='')||tent>20){
-          clearInterval(intv);if(!nome||!nome.value){callback();return;}
-          function marcarICheck(cb){if(!cb)return;jqRef(cb).iCheck('check');cb.checked=true;jqRef(cb).trigger('ifChecked').trigger('change');}
+          if(!nome||!nome.value){ callback(); return; }
+          function marcarICheck(cb){ if(!cb)return; try{jqR(cb).iCheck('check');}catch(e){} cb.checked=true; jqR(cb).trigger('ifChecked').trigger('change'); }
           marcarICheck(document.getElementById('FoiResponsavelTecnico'));
           marcarICheck(document.getElementById('isDeclaracaoIdoneoArtigo2'));
-          setTimeout(function(){
+          ST(function(){
             if(btnS&&!btnS._omegaClicado){
-              btnS._omegaClicado=true;btnS.removeAttribute('disabled');btnS.click();
-              setTimeout(function(){if(btnS)btnS._omegaClicado=false;},3000);
+              btnS._omegaClicado=true; btnS.removeAttribute('disabled'); btnS.click();
+              ST(function(){btnS._omegaClicado=false;},5000);
             }
-            if(window.OmegaMatarTimers) window.OmegaMatarTimers();
-            window._setTimeoutNativo ? window._setTimeoutNativo(callback,2000) : setTimeout(callback,2000);
+            matarTimers();
+            ST(callback,2000);
           },800);
+        } else {
+          ST(pollNomeRT, 600);
         }
-      },600);
+      }
+      pollNomeRT();
     },1500);
   }
 
-  // ── Geradores ────────────────────────────────────────────────────
-  function gerarTelefone(){var d=['11','21','31','41','51'],n='9';for(var i=0;i<8;i++)n+=Math.floor(Math.random()*10);return d[Math.floor(Math.random()*d.length)]+n;}
-  function gerarEmail(){var c='abcdefghijklmnopqrstuvwxyz0123456789',s='';for(var i=0;i<12;i++)s+=c[Math.floor(Math.random()*c.length)];return s+'@yahoo.com';}
-
-  // ── CEP manual ──────────────────────────────────────────────────
-  function preencherEndereco(estado){
+  // ── CEP manual (aba Acoes) ──────────────────────────────────────
+  function preencherEnderecoManual(estado){
     var st=document.getElementById('omega-cep-status'),cep=cepAleatorio(estado);
-    var btn=document.querySelector('[data-action*="EnderecoPedido/Novo"]');
-    if(!btn)return U.box(st,false,'Botao Endereco nao encontrado.');
-    U.box(st,true,'Abrindo formulario...');btn.click();
-    setTimeout(function(){
+    var btn=document.querySelector('button[data-action*="EnderecoPedido/Novo"]');
+    if(!btn) return U.box(st,false,'Botao Endereco nao encontrado.');
+    if(btn._omegaClicado) return;
+    btn._omegaClicado=true; ST(function(){btn._omegaClicado=false;},10000);
+    U.box(st,true,'Abrindo formulario...'); btn.click();
+    ST(function(){
       var campoCep=document.getElementById('Cep');
-      if(!campoCep)return U.box(st,false,'Modal nao abriu.');
-      var jqRef=unsafeWindow.jQuery||unsafeWindow.$;
-      function setarResidencial(){ var ct=document.getElementById('CodigoTipoEndereco'); if(ct){ct.value='RES';ct.selectedIndex=Array.from(ct.options).findIndex(function(o){return o.value==='RES';});jqRef(ct).trigger('change');} }
-      setarResidencial();
-      setTimeout(setarResidencial, 300);
-      var cepN=cep.replace(/\D/g,'');campoCep.value='';campoCep.focus();campoCep.dispatchEvent(new Event('focus',{bubbles:true}));
+      if(!campoCep) return U.box(st,false,'Modal nao abriu.');
+      var tentTipo2=0;
+      function pollTipo2(){
+        tentTipo2++;
+        var ct=document.getElementById('CodigoTipoEndereco');
+        if(ct&&ct.options.length>1){ ct.value='COR'; ct.selectedIndex=Array.from(ct.options).findIndex(function(o){return o.value==='COR';}); jqR(ct).trigger('change'); }
+        else if(tentTipo2<15){ ST(pollTipo2,200); }
+      }
+      pollTipo2();
+      var cepN=cep.replace(/\D/g,''); campoCep.value=''; campoCep.focus(); campoCep.dispatchEvent(new Event('focus',{bubbles:true}));
       var i=0;
       function proxChar(){
         if(i>=cepN.length){
-          campoCep.dispatchEvent(new Event('input',{bubbles:true}));campoCep.dispatchEvent(new Event('change',{bubbles:true}));
-          campoCep.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,key:'Tab',keyCode:9}));campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:'Tab',keyCode:9}));campoCep.dispatchEvent(new Event('blur',{bubbles:true}));
-          var l=document.getElementById('Logradouro');if(l){l.focus();setTimeout(function(){l.blur();},100);}
+          campoCep.dispatchEvent(new Event('input',{bubbles:true})); campoCep.dispatchEvent(new Event('change',{bubbles:true}));
+          campoCep.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,key:'Tab',keyCode:9})); campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:'Tab',keyCode:9}));
+          campoCep.dispatchEvent(new Event('blur',{bubbles:true}));
+          var l=document.getElementById('Logradouro'); if(l){l.focus();ST(function(){l.blur();},100);}
           U.box(st,true,'CEP '+cep+' inserido...');
-          var tent=0,intv=setInterval(function(){tent++;var l2=document.getElementById('Logradouro');
-            if((l2&&l2.value&&l2.value.trim()!=='')||tent>=20){clearInterval(intv);setTimeout(function(){
-              var l3=document.getElementById('Logradouro'),n3=document.getElementById('Numero'),b3=document.getElementById('Bairro');
-              if(l3){l3.value='0';jq(l3).trigger('input').trigger('change');}if(n3){n3.value='0';jq(n3).trigger('input').trigger('change');}if(b3){b3.value='0';jq(b3).trigger('input').trigger('change');}
-              setTimeout(function(){
-                document.querySelectorAll('input[type="checkbox"]').forEach(function(cb){var label=cb.closest('label')||cb.parentElement,txt=label?label.textContent:'';if(txt.toLowerCase().includes('mesmo')||txt.toLowerCase().includes('comercial')){if(!cb.checked){cb.checked=true;jq(cb).trigger('change').trigger('click');}}});
-                setTimeout(function(){var btnS=document.querySelector('.btn-salvar-endereco');if(btnS&&!btnS._omegaClicado){btnS._omegaClicado=true;btnS.click();U.box(st,true,'Endereco ('+estado+'/'+cep+') salvo!');setTimeout(function(){if(btnS)btnS._omegaClicado=false;},3000);}},600);
-              },500);
-            },300);}
-          },500);
+          var tentLog2=0;
+          function pollLog2(){
+            tentLog2++;
+            var l2=document.getElementById('Logradouro');
+            if((l2&&l2.value&&l2.value.trim()!=='')||tentLog2>=20){
+              ST(function(){
+                var l3=document.getElementById('Logradouro'),n3=document.getElementById('Numero'),b3=document.getElementById('Bairro');
+                if(l3){l3.value='0';jqR(l3).trigger('input').trigger('change');}
+                if(n3){n3.value='0';jqR(n3).trigger('input').trigger('change');}
+                if(b3){b3.value='0';jqR(b3).trigger('input').trigger('change');}
+                ST(function(){
+                  var cb=document.getElementById('MesmoEndereco');
+                  if(cb&&!cb.checked){ try{jqR(cb).iCheck('check');}catch(e){} cb.checked=true; jqR(cb).trigger('ifChecked').trigger('change'); }
+                  ST(function(){
+                    var btnS=document.querySelector('.btn-salvar-endereco');
+                    if(btnS&&!btnS._omegaClicado){
+                      btnS._omegaClicado=true; btnS.click();
+                      U.box(st,true,'Endereco ('+estado+'/'+cep+') salvo!');
+                      ST(function(){btnS._omegaClicado=false;},5000);
+                    }
+                  },600);
+                },500);
+              },300);
+            } else { ST(pollLog2,500); }
+          }
+          pollLog2();
           return;
         }
-        var ch=cepN[i];campoCep.value+=ch;campoCep.dispatchEvent(new Event('input',{bubbles:true}));campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));i++;setTimeout(proxChar,80);
+        var ch=cepN[i]; campoCep.value+=ch;
+        campoCep.dispatchEvent(new Event('input',{bubbles:true})); campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
+        i++; ST(proxChar,80);
       }
       proxChar();
-    },1200);
+    },1500);
   }
 
-  document.getElementById('omega-cep-mg').addEventListener('click',function(){preencherEndereco('MG');});
-  document.getElementById('omega-cep-sp').addEventListener('click',function(){preencherEndereco('SP');});
-  document.getElementById('omega-cep-rj').addEventListener('click',function(){preencherEndereco('RJ');});
+  document.getElementById('omega-cep-mg').addEventListener('click',function(){preencherEnderecoManual('MG');});
+  document.getElementById('omega-cep-sp').addEventListener('click',function(){preencherEnderecoManual('SP');});
+  document.getElementById('omega-cep-rj').addEventListener('click',function(){preencherEnderecoManual('RJ');});
 
-  // ── Contato manual ──────────────────────────────────────────────
+  // ── Contato manual (aba Acoes) ──────────────────────────────────
   document.getElementById('omega-contato-btn').addEventListener('click',function(){
     var st=document.getElementById('omega-contato-status');
     if(tipoCadastro()==='CPF'){U.box(st,true,'CPF — contatos ja preenchidos pelo portal.');return;}
     U.box(st,true,'Adicionando telefone...');
-    adicionarContato('2',gerarTelefone(),function(ok){
+    adicionarContato('2','0000000000',function(ok){
       if(!ok){U.box(st,false,'Erro no telefone.');return;}
-      setTimeout(function(){var email=gerarEmail();adicionarContato('4',email,function(ok2){if(ok2)U.box(st,true,'Tel + email adicionados!<br><span style="font-size:10px">'+email+'</span>');else U.box(st,false,'Telefone ok, erro no email.');});},1500);
+      ST(function(){
+        var email=gerarEmail();
+        adicionarContato('4',email,function(ok2){
+          if(ok2) U.box(st,true,'Tel + email adicionados!<br><span style="font-size:10px">'+email+'</span>');
+          else U.box(st,false,'Telefone ok, erro no email.');
+        });
+      },2000);
     });
   });
 
-  function adicionarContato(tipoVal,contatoVal,callback){
-    var jqRef=unsafeWindow.jQuery||unsafeWindow.$;
-    var btn=document.querySelector('[data-action*="ContatoPedido/Novo"]');if(!btn){callback(false);return;}
-    btn.click();
-    setTimeout(function(){
-      var t=document.getElementById('CodigoTipoContato'),c=document.getElementById('Contato');
-      if(!t||!c){callback(false);return;}
-      // Seleciona tipo e aguarda portal atualizar o campo antes de digitar
-      t.value=tipoVal;
-      jqRef(t).trigger('change');
-      setTimeout(function(){
-        // Confirma que o tipo foi selecionado
-        t.value=tipoVal;
-        jqRef(t).trigger('change');
-        setTimeout(function(){
-          c.value='';c.focus();c.dispatchEvent(new Event('focus',{bubbles:true}));
-          var chars=contatoVal.split(''),i=0;
-          function proxChar(){
-            if(i>=chars.length){
-              c.dispatchEvent(new Event('change',{bubbles:true}));
-              c.dispatchEvent(new Event('blur',{bubbles:true}));
-              setTimeout(function(){
-                var s=document.querySelector('.btn-salvar-contato');
-                if(s&&!s._omegaClicado){
-                  s._omegaClicado=true;s.click();
-                  setTimeout(function(){if(s)s._omegaClicado=false;},3000);
-                  if(window.OmegaMatarTimers) window.OmegaMatarTimers();
-                  window._setTimeoutNativo ? window._setTimeoutNativo(function(){callback(true);},1500) : setTimeout(function(){callback(true);},1500);
-                }
-                else if(!s)callback(false);
-              },600);
-              return;
-            }
-            var ch=chars[i];c.value+=ch;
-            c.dispatchEvent(new Event('input',{bubbles:true}));
-            c.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
-            i++;setTimeout(proxChar,60);
-          }
-          proxChar();
-        },500);
-      },400);
-    },1200);
-  }
-
-  // ── RT manual ───────────────────────────────────────────────────
+  // ── RT manual (aba Acoes) ───────────────────────────────────────
   document.getElementById('omega-rt-btn').addEventListener('click',function(){
     var st=document.getElementById('omega-rt-status');
     adicionarRT(st,function(){U.box(st,true,'RT adicionado! CPF: '+CPF_RT);});
@@ -651,14 +631,38 @@
     if(!el)return;
     if(lista.length===0){el.innerHTML='';if(vazio)vazio.style.display='block';return;}
     if(vazio)vazio.style.display='none';
-    el.innerHTML=lista.map(function(item,idx){var p=item.placa||'',display=/^[A-Z]{3}[0-9]{4}$/.test(p)?p.substring(0,3)+'-'+p.substring(3):p;return'<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0f0f0"><div style="font-size:12px;font-weight:bold;color:#333">'+display+'</div><button onclick="OmegaUsarVeiculoCad('+idx+')" style="padding:4px 9px;background:#1a73e8;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer">Usar</button></div>';}).join('');
+    el.innerHTML=lista.map(function(item,idx){
+      var p=item.placa||'',display=/^[A-Z]{3}[0-9]{4}$/.test(p)?p.substring(0,3)+'-'+p.substring(3):p;
+      return'<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0f0f0"><div style="font-size:12px;font-weight:bold;color:#333">'+display+'</div><button onclick="OmegaUsarVeiculoCad('+idx+')" style="padding:4px 9px;background:#1a73e8;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer">Usar</button></div>';
+    }).join('');
   }
 
   function monitorarPopupsVeiculo(st,callback){
-    var tent=0,intv=setInterval(function(){tent++;
+    var tent=0,intv=setInterval(function(){
+      tent++;
       var bbSim=document.querySelector('.bootbox-confirm button[data-bb-handler="confirm"]');
-      if(bbSim&&bbSim.offsetParent!==null){clearInterval(intv);U.box(st,true,'Popup! Confirmando em 3s...');setTimeout(function(){bbSim.click();setTimeout(function(){var t2=0,iv2=setInterval(function(){t2++;var modal=document.getElementById('manterVeiculoModal'),titulo=modal?modal.querySelector('.modal-title'):null,ehMov=titulo&&titulo.textContent.indexOf('Movimenta')!==-1,vis=modal&&(modal.style.display==='block'||modal.classList.contains('show')),btnEx=document.querySelector('.btn-confirmar-exclusao');if(ehMov&&vis&&btnEx){clearInterval(iv2);setTimeout(function(){btnEx.click();setTimeout(function(){var btnInc=document.querySelector('.btn-confirmar-inclusao');if(btnInc)btnInc.click();setTimeout(callback,1500);},1500);},500);}else if(t2>=15){clearInterval(iv2);callback();}},300);},1500);},3000);return;}
-      var chassi=document.getElementById('Chassi');if(chassi&&chassi.value&&chassi.value.trim()!==''){clearInterval(intv);callback();return;}
+      if(bbSim&&bbSim.offsetParent!==null){
+        clearInterval(intv); U.box(st,true,'Popup! Confirmando em 3s...');
+        setTimeout(function(){
+          bbSim.click();
+          setTimeout(function(){
+            var t2=0,iv2=setInterval(function(){
+              t2++;
+              var modal=document.getElementById('manterVeiculoModal'),titulo=modal?modal.querySelector('.modal-title'):null;
+              var ehMov=titulo&&titulo.textContent.indexOf('Movimenta')!==-1;
+              var vis=modal&&(modal.style.display==='block'||modal.classList.contains('show'));
+              var btnEx=document.querySelector('.btn-confirmar-exclusao');
+              if(ehMov&&vis&&btnEx){
+                clearInterval(iv2);
+                setTimeout(function(){btnEx.click();setTimeout(function(){var btnInc=document.querySelector('.btn-confirmar-inclusao');if(btnInc)btnInc.click();setTimeout(callback,1500);},1500);},500);
+              } else if(t2>=15){clearInterval(iv2);callback();}
+            },300);
+          },1500);
+        },3000);
+        return;
+      }
+      var chassi=document.getElementById('Chassi');
+      if(chassi&&chassi.value&&chassi.value.trim()!==''){clearInterval(intv);callback();return;}
       if(tent>=20){clearInterval(intv);callback();}
     },300);
   }
@@ -678,18 +682,39 @@
       function proxChar(){
         if(i>=placaVal.length){
           campoPlaca.dispatchEvent(new Event('change',{bubbles:true}));campoPlaca.dispatchEvent(new Event('blur',{bubbles:true}));
-          setTimeout(function(){campoRenavam.removeAttribute('disabled');campoRenavam.value=item.renavam||'';campoRenavam.dispatchEvent(new Event('input',{bubbles:true}));campoRenavam.dispatchEvent(new Event('change',{bubbles:true}));campoRenavam.dispatchEvent(new Event('blur',{bubbles:true}));
-            setTimeout(function(){jq.ajax({type:'GET',url:'/Veiculo/BuscarVeiculo',cache:false,data:{placa:campoPlaca.value.toUpperCase(),renavam:campoRenavam.value},success:function(){setTimeout(function(){if(btnVerificar)btnVerificar.click();},500);},error:function(){setTimeout(function(){if(btnVerificar)btnVerificar.click();},500);}});
-              monitorarPopupsVeiculo(st,function(){var tara=document.getElementById('Tara');if(tara&&(!tara.value||tara.value==='')){tara.removeAttribute('disabled');tara.value='2';jq(tara).trigger('input').trigger('change');}setTimeout(function(){var btnS=document.querySelector('.btn-salvar-veiculo')||document.querySelector('.btn-confirmar-inclusao');if(btnS){btnS.removeAttribute('disabled');btnS.click();U.box(st,true,'Veiculo salvo! Placa: <b>'+campoPlaca.value+'</b>');}else U.box(st,false,'Botao Salvar nao encontrado.');},800);});
-            },400);},300);
+          setTimeout(function(){
+            campoRenavam.removeAttribute('disabled');campoRenavam.value=item.renavam||'';
+            campoRenavam.dispatchEvent(new Event('input',{bubbles:true}));campoRenavam.dispatchEvent(new Event('change',{bubbles:true}));campoRenavam.dispatchEvent(new Event('blur',{bubbles:true}));
+            setTimeout(function(){
+              jq.ajax({type:'GET',url:'/Veiculo/BuscarVeiculo',cache:false,data:{placa:campoPlaca.value.toUpperCase(),renavam:campoRenavam.value},
+                success:function(){setTimeout(function(){if(btnVerificar)btnVerificar.click();},500);},
+                error:function(){setTimeout(function(){if(btnVerificar)btnVerificar.click();},500);}
+              });
+              monitorarPopupsVeiculo(st,function(){
+                var tara=document.getElementById('Tara');
+                if(tara&&(!tara.value||tara.value==='')){tara.removeAttribute('disabled');tara.value='2';jq(tara).trigger('input').trigger('change');}
+                setTimeout(function(){
+                  var btnS=document.querySelector('.btn-salvar-veiculo')||document.querySelector('.btn-confirmar-inclusao');
+                  if(btnS){btnS.removeAttribute('disabled');btnS.click();U.box(st,true,'Veiculo salvo! Placa: <b>'+campoPlaca.value+'</b>');}
+                  else U.box(st,false,'Botao Salvar nao encontrado.');
+                },800);
+              });
+            },400);
+          },300);
           return;
         }
-        var ch=placaVal[i];campoPlaca.value=placaVal.substring(0,i+1);campoPlaca.dispatchEvent(new Event('input',{bubbles:true}));campoPlaca.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));i++;setTimeout(proxChar,i===4?150:80);
+        var ch=placaVal[i];campoPlaca.value=placaVal.substring(0,i+1);
+        campoPlaca.dispatchEvent(new Event('input',{bubbles:true}));campoPlaca.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
+        i++;setTimeout(proxChar,i===4?150:80);
       }
       proxChar();
     }
     if(isMovimentacao&&popupAberto&&ehPopupVeiculo){U.box(st,true,'Preenchendo...');preencher();}
-    else{var btnAdd=document.querySelector('[data-action*="VeiculoPedido/Novo"]');if(!btnAdd)return U.box(st,false,'Botao Adicionar Veiculo nao encontrado.');btnAdd.click();setTimeout(preencher,1500);}
+    else{
+      var btnAdd=document.querySelector('[data-action*="VeiculoPedido/Novo"]');
+      if(!btnAdd)return U.box(st,false,'Botao Adicionar Veiculo nao encontrado.');
+      btnAdd.click();setTimeout(preencher,1500);
+    }
   };
 
 })();
