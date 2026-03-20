@@ -160,38 +160,49 @@
   };
 
   // ── Proteção contra reload durante automação ────────────────────
-  // O portal redireciona após salvar cada item — interceptamos location.href
-  // e location.replace para bloquear durante automação ativa
   window._omegaAutomacaoAtiva = false;
+  window._omegaIntervals = []; // rastreia intervals criados pelo portal
 
-  var _locOriginal = unsafeWindow.location;
+  // Intercepta setInterval para rastrear todos os timers
+  var _setIntervalOrig = unsafeWindow.setInterval;
+  var _clearIntervalOrig = unsafeWindow.clearInterval;
+  unsafeWindow.setInterval = function(fn, delay){
+    var id = _setIntervalOrig.apply(this, arguments);
+    window._omegaIntervals.push(id);
+    return id;
+  };
+
+  // Função para matar todos os intervals ativos (cancela o toast/redirect)
+  window.OmegaMatarTimers = function(){
+    // Pega o ID mais alto atual e cancela os últimos 200
+    var idMax = _setIntervalOrig(function(){}, 99999);
+    _clearIntervalOrig(idMax);
+    for(var i=idMax; i>idMax-200; i--){
+      _clearIntervalOrig(i);
+    }
+    // Cancela também os rastreados
+    window._omegaIntervals.forEach(function(id){ _clearIntervalOrig(id); });
+    window._omegaIntervals = [];
+  };
+
+  // Bloqueia location.href durante automação
+  var _locHref = Object.getOwnPropertyDescriptor(unsafeWindow.location.__proto__, 'href') ||
+                 Object.getOwnPropertyDescriptor(unsafeWindow.location, 'href');
   try {
-    Object.defineProperty(unsafeWindow, 'location', {
-      get: function(){ return _locOriginal; },
+    Object.defineProperty(unsafeWindow.location, 'href', {
+      get: _locHref ? _locHref.get : function(){ return document.URL; },
       set: function(v){
         if(window._omegaAutomacaoAtiva){
-          console.log('[OMEGA] Redirect bloqueado durante automacao:', v);
+          console.log('[OMEGA] Redirect bloqueado:', v);
           return;
         }
-        _locOriginal.href = v;
+        if(_locHref && _locHref.set) _locHref.set.call(this, v);
       },
       configurable: true
     });
   } catch(e){}
 
-  // Intercepta também pushState e replaceState
-  var _pushState = unsafeWindow.history.pushState.bind(unsafeWindow.history);
-  var _replaceState = unsafeWindow.history.replaceState.bind(unsafeWindow.history);
-  unsafeWindow.history.pushState = function(){
-    if(window._omegaAutomacaoAtiva){ console.log('[OMEGA] pushState bloqueado'); return; }
-    return _pushState.apply(this, arguments);
-  };
-  unsafeWindow.history.replaceState = function(){
-    if(window._omegaAutomacaoAtiva){ console.log('[OMEGA] replaceState bloqueado'); return; }
-    return _replaceState.apply(this, arguments);
-  };
-
-  // Intercepta beforeunload para bloquear reload
+  // Bloqueia beforeunload
   unsafeWindow.addEventListener('beforeunload', function(e){
     if(window._omegaAutomacaoAtiva){
       e.preventDefault();
