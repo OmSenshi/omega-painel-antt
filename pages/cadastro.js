@@ -216,9 +216,9 @@
           setTimeout(function(){
             U.box(st,true,'3/3 — RT...');
             adicionarRT(st,function(){U.box(st,true,'Automacao CPF concluida!');});
-          },1000);
-        });
-      },800);
+          },1500);
+        },'RES');
+      },1200);
     });
   }
 
@@ -249,18 +249,18 @@
                   U.box(st,true,'4/4 — Gestor + RT...');
                   if(cpfSocio){
                     adicionarGestor(cpfSocio,st,function(){
-                      setTimeout(function(){adicionarRT(st,function(){U.box(st,true,'Automacao CNPJ concluida!');});},1000);
+                      setTimeout(function(){adicionarRT(st,function(){U.box(st,true,'Automacao CNPJ concluida!');});},1500);
                     });
                   } else {
                     adicionarRT(st,function(){U.box(st,false,'RT ok. Gestor sem CPF — adicione manualmente.');});
                   }
-                },1000);
+                },1500);
               });
-            },1500);
+            },2000);
           });
-        },1000);
-      });
-    },800);
+        },1500);
+      },'COR');
+    },1200);
   }
 
   // ── Transportador CPF ───────────────────────────────────────────
@@ -304,67 +304,105 @@
   }
 
   // ── Endereco ────────────────────────────────────────────────────
-  function preencherEnderecoComDados(cep,logradouro,numero,bairro,complemento,st,callback){
+  function preencherEnderecoComDados(cep,logradouro,numero,bairro,complemento,st,callback,tipoEndereco){
+    // tipoEndereco: 'RES' para CPF, 'COR' para CNPJ
+    var tipo = tipoEndereco || 'RES';
+    var jqRef = unsafeWindow.jQuery || unsafeWindow.$;
     var btn=document.querySelector('[data-action*="EnderecoPedido/Novo"]');
     if(!btn){U.box(st,false,'Botao Endereco nao encontrado.');callback();return;}
     btn.click();
+
     setTimeout(function(){
-      var campoCep=document.getElementById('Cep'),campoTipo=document.getElementById('CodigoTipoEndereco');
+      var campoCep=document.getElementById('Cep');
       if(!campoCep){U.box(st,false,'Modal de endereco nao abriu.');callback();return;}
 
-      // Seta Residencial com delay para garantir que o modal terminou de renderizar
-      var jqRef = unsafeWindow.jQuery || unsafeWindow.$;
-      function setarResidencial(){
-        var ct = document.getElementById('CodigoTipoEndereco');
-        if(ct){ ct.value='RES'; ct.selectedIndex=Array.from(ct.options).findIndex(function(o){return o.value==='RES';}); jqRef(ct).trigger('change'); }
+      // Seta tipo de endereco com dupla tentativa
+      function setarTipo(){
+        var ct=document.getElementById('CodigoTipoEndereco');
+        if(ct){ ct.value=tipo; ct.selectedIndex=Array.from(ct.options).findIndex(function(o){return o.value===tipo;}); jqRef(ct).trigger('change'); }
       }
-      setarResidencial();
-      setTimeout(setarResidencial, 300); // segunda tentativa para garantir
+      setarTipo();
+      setTimeout(setarTipo, 400);
+
       var cepFinal=(cep?cep:cepAleatorio('MG')).replace(/\D/g,'');
       var temDados=!!(cep&&logradouro&&logradouro!=='0');
-      campoCep.value='';campoCep.focus();campoCep.dispatchEvent(new Event('focus',{bubbles:true}));
-      var i=0;
-      function proxChar(){
-        if(i>=cepFinal.length){
-          campoCep.dispatchEvent(new Event('input',{bubbles:true}));campoCep.dispatchEvent(new Event('change',{bubbles:true}));
-          campoCep.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,key:'Tab',keyCode:9}));
-          campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:'Tab',keyCode:9}));
-          campoCep.dispatchEvent(new Event('blur',{bubbles:true}));
-          var l=document.getElementById('Logradouro');if(l){l.focus();setTimeout(function(){l.blur();},100);}
-          var tent=0,intv=setInterval(function(){
-            tent++;
-            var l2=document.getElementById('Logradouro');
-            if((l2&&l2.value&&l2.value.trim()!=='')||tent>=20){
-              clearInterval(intv);
-              setTimeout(function(){
-                var l3=document.getElementById('Logradouro'),n3=document.getElementById('Numero'),b3=document.getElementById('Bairro'),c3=document.getElementById('Complemento');
-                if(l3){l3.value=temDados?logradouro:'0';jq(l3).trigger('input').trigger('change');}
-                if(n3){n3.value=temDados?(numero||'0'):'0';jq(n3).trigger('input').trigger('change');}
-                if(b3){b3.value=temDados?(bairro||'0'):'0';jq(b3).trigger('input').trigger('change');}
-                if(c3&&complemento&&temDados){c3.value=complemento;jq(c3).trigger('input').trigger('change');}
+
+      // Digita CEP com delay maior entre chars
+      setTimeout(function(){
+        campoCep.value='';campoCep.focus();campoCep.dispatchEvent(new Event('focus',{bubbles:true}));
+        var i=0;
+        function proxChar(){
+          if(i>=cepFinal.length){
+            campoCep.dispatchEvent(new Event('input',{bubbles:true}));
+            campoCep.dispatchEvent(new Event('change',{bubbles:true}));
+            campoCep.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,key:'Tab',keyCode:9}));
+            campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:'Tab',keyCode:9}));
+            campoCep.dispatchEvent(new Event('blur',{bubbles:true}));
+            var l=document.getElementById('Logradouro');
+            if(l){l.focus();setTimeout(function(){l.blur();},150);}
+
+            // Aguarda portal preencher logradouro
+            var tent=0,intv=setInterval(function(){
+              tent++;
+              var l2=document.getElementById('Logradouro');
+              if((l2&&l2.value&&l2.value.trim()!=='')||tent>=20){
+                clearInterval(intv);
+
+                // Delay maior antes de preencher campos
                 setTimeout(function(){
-                  document.querySelectorAll('input[type="checkbox"]').forEach(function(cb){
-                    var label=cb.closest('label')||cb.parentElement,txt=label?label.textContent:'';
-                    if(txt.toLowerCase().includes('mesmo')||txt.toLowerCase().includes('comercial')){if(!cb.checked){cb.checked=true;jq(cb).trigger('change').trigger('click');}}
-                  });
+                  var l3=document.getElementById('Logradouro'),n3=document.getElementById('Numero'),b3=document.getElementById('Bairro'),c3=document.getElementById('Complemento');
+                  if(l3){l3.value=temDados?logradouro:'0';jqRef(l3).trigger('input').trigger('change');}
+                  if(n3){n3.value=temDados?(numero||'0'):'0';jqRef(n3).trigger('input').trigger('change');}
+                  if(b3){b3.value=temDados?(bairro||'0'):'0';jqRef(b3).trigger('input').trigger('change');}
+                  if(c3&&complemento&&temDados){c3.value=complemento;jqRef(c3).trigger('input').trigger('change');}
+
+                  // Marca checkbox MesmoEndereco por ID (CNPJ) ou por texto (fallback)
                   setTimeout(function(){
-                    var btnS=document.querySelector('.btn-salvar-endereco');
-                    if(btnS&&!btnS._omegaClicado){btnS._omegaClicado=true;btnS.click();setTimeout(function(){if(btnS)btnS._omegaClicado=false;},3000);}
-                    setTimeout(callback,800);
-                  },500);
-                },400);
-              },300);
-            }
-          },500);
-          return;
+                    var cbMesmo = document.getElementById('MesmoEndereco');
+                    if(cbMesmo && !cbMesmo.checked){
+                      jqRef(cbMesmo).iCheck('check');
+                      cbMesmo.checked=true;
+                      jqRef(cbMesmo).trigger('ifChecked').trigger('change');
+                    } else if(!cbMesmo) {
+                      // Fallback por texto
+                      document.querySelectorAll('input[type="checkbox"]').forEach(function(cb){
+                        var label=cb.closest('label')||cb.parentElement,txt=label?label.textContent:'';
+                        if(txt.toLowerCase().includes('mesmo')||txt.toLowerCase().includes('comercial')){
+                          if(!cb.checked){
+                            try{jqRef(cb).iCheck('check');}catch(e){}
+                            cb.checked=true;jqRef(cb).trigger('ifChecked').trigger('change');
+                          }
+                        }
+                      });
+                    }
+
+                    // Garante que o tipo ainda está correto antes de salvar
+                    setarTipo();
+
+                    // Salva com delay maior
+                    setTimeout(function(){
+                      var btnS=document.querySelector('.btn-salvar-endereco');
+                      if(btnS&&!btnS._omegaClicado){
+                        btnS._omegaClicado=true;
+                        btnS.click();
+                        setTimeout(function(){if(btnS)btnS._omegaClicado=false;},3000);
+                      }
+                      setTimeout(callback,1200);
+                    },700);
+                  },600);
+                },500);
+              }
+            },500);
+            return;
+          }
+          var ch=cepFinal[i];campoCep.value+=ch;
+          campoCep.dispatchEvent(new Event('input',{bubbles:true}));
+          campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
+          i++;setTimeout(proxChar,100);
         }
-        var ch=cepFinal[i];campoCep.value+=ch;
-        campoCep.dispatchEvent(new Event('input',{bubbles:true}));
-        campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
-        i++;setTimeout(proxChar,80);
-      }
-      proxChar();
-    },1200);
+        proxChar();
+      }, 600); // delay antes de comecar a digitar CEP
+    },1500);
   }
 
   // ── Gestor ──────────────────────────────────────────────────────
