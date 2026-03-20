@@ -223,7 +223,7 @@
               U.box(st,true,'Automacao CPF concluida!');
             });
           },1500);
-        }); (Correspondencia) — modal nao tem RES
+        }); // COR para CPF e CNPJ
       },1200);
     });
   }
