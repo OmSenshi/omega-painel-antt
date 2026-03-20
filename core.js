@@ -159,7 +159,46 @@
     }
   };
 
-  // ── Config API ──────────────────────────────────────────────────
+  // ── Proteção contra reload durante automação ────────────────────
+  // O portal redireciona após salvar cada item — interceptamos location.href
+  // e location.replace para bloquear durante automação ativa
+  window._omegaAutomacaoAtiva = false;
+
+  var _locOriginal = unsafeWindow.location;
+  try {
+    Object.defineProperty(unsafeWindow, 'location', {
+      get: function(){ return _locOriginal; },
+      set: function(v){
+        if(window._omegaAutomacaoAtiva){
+          console.log('[OMEGA] Redirect bloqueado durante automacao:', v);
+          return;
+        }
+        _locOriginal.href = v;
+      },
+      configurable: true
+    });
+  } catch(e){}
+
+  // Intercepta também pushState e replaceState
+  var _pushState = unsafeWindow.history.pushState.bind(unsafeWindow.history);
+  var _replaceState = unsafeWindow.history.replaceState.bind(unsafeWindow.history);
+  unsafeWindow.history.pushState = function(){
+    if(window._omegaAutomacaoAtiva){ console.log('[OMEGA] pushState bloqueado'); return; }
+    return _pushState.apply(this, arguments);
+  };
+  unsafeWindow.history.replaceState = function(){
+    if(window._omegaAutomacaoAtiva){ console.log('[OMEGA] replaceState bloqueado'); return; }
+    return _replaceState.apply(this, arguments);
+  };
+
+  // Intercepta beforeunload para bloquear reload
+  unsafeWindow.addEventListener('beforeunload', function(e){
+    if(window._omegaAutomacaoAtiva){
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    }
+  }, true);
   unsafeWindow.OmegaConfigAPI = function() {
     var atual = window.OmegaUtils.getApiKey();
     var nova  = prompt('Cole sua chave da API Anthropic (sk-ant-...):', atual ? '********' : '');
