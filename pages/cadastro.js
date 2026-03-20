@@ -437,17 +437,17 @@
     setTimeout(function(){
       var campoFunc=document.getElementById('CodigoTipoVinculo'),campoCPF=document.getElementById('CpfCnpj');
       if(!campoCPF){U.box(st,false,'Modal Gestor nao abriu.');callback();return;}
-      // Seleciona Socio
+      // Seleciona Socio — envolve em try/catch pois portal pode lançar erro no change
       if(campoFunc){
         campoFunc.value='1';
-        jqRef(campoFunc).trigger('change');
+        try{ jqRef(campoFunc).trigger('change'); }catch(e){}
       }
       // Aguarda mais tempo para o portal reagir ao tipo de vinculo
       setTimeout(function(){
         // Confirma selecao do tipo
         if(campoFunc && campoFunc.value!=='1'){
           campoFunc.value='1';
-          jqRef(campoFunc).trigger('change');
+          try{ jqRef(campoFunc).trigger('change'); }catch(e){}
         }
         // Recarrega referencia ao campo CPF (pode ter sido recriado pelo portal)
         campoCPF=document.getElementById('CpfCnpj');
