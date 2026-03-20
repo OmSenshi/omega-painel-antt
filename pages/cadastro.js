@@ -407,6 +407,7 @@
 
   // ── Gestor ──────────────────────────────────────────────────────
   function adicionarGestor(cpfSocio,st,callback){
+    var jqRef=unsafeWindow.jQuery||unsafeWindow.$;
     var cpfFmt=cpfSocio.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4');
     var btn=document.querySelector('[data-action*="GestorPedido/Novo"],[data-action*="Gestor/Criar"]');
     if(!btn){document.querySelectorAll('button,a').forEach(function(el){if(!btn&&el.textContent.toLowerCase().trim()==='adicionar gestor')btn=el;});}
@@ -415,43 +416,73 @@
     setTimeout(function(){
       var campoFunc=document.getElementById('CodigoTipoVinculo'),campoCPF=document.getElementById('CpfCnpj');
       if(!campoCPF){U.box(st,false,'Modal Gestor nao abriu.');callback();return;}
-      if(campoFunc){campoFunc.value='1';jq(campoFunc).trigger('change');}
+      // Seleciona Socio e aguarda portal reagir
+      if(campoFunc){campoFunc.value='1';jqRef(campoFunc).trigger('change');}
       setTimeout(function(){
-        campoCPF.value=cpfFmt;jq(campoCPF).trigger('input').trigger('change').trigger('blur');
-        var tent=0,intv=setInterval(function(){
-          tent++;
-          var nome=document.getElementById('Nome'),btnS=document.querySelector('.btn-salvar-gestor');
-          if((nome&&nome.value&&nome.value.trim()!=='')||tent>15){
-            clearInterval(intv);if(!nome||!nome.value){callback();return;}
-            var cb=document.getElementById('isDeclaracaoIdoneoArtigo2');
-            if(cb){jq(cb).iCheck('check');cb.checked=true;jq(cb).trigger('ifChecked').trigger('change');}
-            setTimeout(function(){if(btnS&&!btnS._omegaClicado){btnS._omegaClicado=true;btnS.removeAttribute('disabled');btnS.click();setTimeout(function(){if(btnS)btnS._omegaClicado=false;},3000);}setTimeout(callback,800);},600);
+        // Digita CPF char a char para acionar mascara
+        campoCPF.value='';
+        campoCPF.focus();
+        campoCPF.dispatchEvent(new Event('focus',{bubbles:true}));
+        var chars=cpfFmt.split(''),i=0;
+        function proxChar(){
+          if(i>=chars.length){
+            campoCPF.dispatchEvent(new Event('change',{bubbles:true}));
+            campoCPF.dispatchEvent(new Event('blur',{bubbles:true}));
+            // Aguarda portal carregar o nome
+            var tent=0,intv=setInterval(function(){
+              tent++;
+              var nome=document.getElementById('Nome'),btnS=document.querySelector('.btn-salvar-gestor');
+              if((nome&&nome.value&&nome.value.trim()!=='')||tent>20){
+                clearInterval(intv);
+                if(!nome||!nome.value){U.box(st,false,'Portal nao carregou nome do gestor. Verifique o CPF.');callback();return;}
+                var cb=document.getElementById('isDeclaracaoIdoneoArtigo2');
+                if(cb){jqRef(cb).iCheck('check');cb.checked=true;jqRef(cb).trigger('ifChecked').trigger('change');}
+                setTimeout(function(){
+                  if(btnS&&!btnS._omegaClicado){
+                    btnS._omegaClicado=true;btnS.removeAttribute('disabled');btnS.click();
+                    setTimeout(function(){if(btnS)btnS._omegaClicado=false;},3000);
+                  }
+                  setTimeout(callback,1200);
+                },800);
+              }
+            },600);
+            return;
           }
-        },500);
-      },400);
-    },1000);
+          var ch=chars[i];
+          campoCPF.value+=ch;
+          campoCPF.dispatchEvent(new Event('input',{bubbles:true}));
+          campoCPF.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
+          i++;setTimeout(proxChar,60);
+        }
+        proxChar();
+      },800);
+    },1500);
   }
 
   // ── RT ───────────────────────────────────────────────────────────
   var CPF_RT='071.417.536-64';
   function adicionarRT(st,callback){
+    var jqRef=unsafeWindow.jQuery||unsafeWindow.$;
     var btn=document.querySelector('[data-action*="ResponsavelTecnico/Criar"]');
     if(!btn){callback();return;}
     btn.click();
     setTimeout(function(){
       var cpf=document.getElementById('Cpf');if(!cpf){callback();return;}
-      cpf.value=CPF_RT;jq(cpf).trigger('input').trigger('change').trigger('blur');
+      cpf.value=CPF_RT;jqRef(cpf).trigger('input').trigger('change').trigger('blur');
       var tent=0,intv=setInterval(function(){
         tent++;var nome=document.getElementById('Nome'),btnS=document.getElementById('btnSalvar');
-        if((nome&&nome.value&&nome.value.trim()!=='')||tent>15){
+        if((nome&&nome.value&&nome.value.trim()!=='')||tent>20){
           clearInterval(intv);if(!nome||!nome.value){callback();return;}
-          function marcarICheck(cb){if(!cb)return;jq(cb).iCheck('check');cb.checked=true;jq(cb).trigger('ifChecked').trigger('change');}
+          function marcarICheck(cb){if(!cb)return;jqRef(cb).iCheck('check');cb.checked=true;jqRef(cb).trigger('ifChecked').trigger('change');}
           marcarICheck(document.getElementById('FoiResponsavelTecnico'));
           marcarICheck(document.getElementById('isDeclaracaoIdoneoArtigo2'));
-          setTimeout(function(){if(btnS&&!btnS._omegaClicado){btnS._omegaClicado=true;btnS.removeAttribute('disabled');btnS.click();setTimeout(function(){if(btnS)btnS._omegaClicado=false;},3000);}setTimeout(callback,800);},600);
+          setTimeout(function(){
+            if(btnS&&!btnS._omegaClicado){btnS._omegaClicado=true;btnS.removeAttribute('disabled');btnS.click();setTimeout(function(){if(btnS)btnS._omegaClicado=false;},3000);}
+            setTimeout(callback,1000);
+          },800);
         }
-      },500);
-    },1000);
+      },600);
+    },1500);
   }
 
   // ── Geradores ────────────────────────────────────────────────────
@@ -513,21 +544,42 @@
   });
 
   function adicionarContato(tipoVal,contatoVal,callback){
+    var jqRef=unsafeWindow.jQuery||unsafeWindow.$;
     var btn=document.querySelector('[data-action*="ContatoPedido/Novo"]');if(!btn){callback(false);return;}
     btn.click();
     setTimeout(function(){
-      var t=document.getElementById('CodigoTipoContato'),c=document.getElementById('Contato');if(!t||!c){callback(false);return;}
-      t.value=tipoVal;jq(t).trigger('change');
+      var t=document.getElementById('CodigoTipoContato'),c=document.getElementById('Contato');
+      if(!t||!c){callback(false);return;}
+      // Seleciona tipo e aguarda portal atualizar o campo antes de digitar
+      t.value=tipoVal;
+      jqRef(t).trigger('change');
       setTimeout(function(){
-        c.value='';c.focus();c.dispatchEvent(new Event('focus',{bubbles:true}));
-        var chars=contatoVal.split(''),i=0;
-        function proxChar(){
-          if(i>=chars.length){c.dispatchEvent(new Event('change',{bubbles:true}));c.dispatchEvent(new Event('blur',{bubbles:true}));setTimeout(function(){var s=document.querySelector('.btn-salvar-contato');if(s&&!s._omegaClicado){s._omegaClicado=true;s.click();setTimeout(function(){if(s)s._omegaClicado=false;},3000);callback(true);}else if(!s)callback(false);},400);return;}
-          var ch=chars[i];c.value+=ch;c.dispatchEvent(new Event('input',{bubbles:true}));c.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));i++;setTimeout(proxChar,50);
-        }
-        proxChar();
-      },300);
-    },800);
+        // Confirma que o tipo foi selecionado
+        t.value=tipoVal;
+        jqRef(t).trigger('change');
+        setTimeout(function(){
+          c.value='';c.focus();c.dispatchEvent(new Event('focus',{bubbles:true}));
+          var chars=contatoVal.split(''),i=0;
+          function proxChar(){
+            if(i>=chars.length){
+              c.dispatchEvent(new Event('change',{bubbles:true}));
+              c.dispatchEvent(new Event('blur',{bubbles:true}));
+              setTimeout(function(){
+                var s=document.querySelector('.btn-salvar-contato');
+                if(s&&!s._omegaClicado){s._omegaClicado=true;s.click();setTimeout(function(){if(s)s._omegaClicado=false;},3000);callback(true);}
+                else if(!s)callback(false);
+              },600);
+              return;
+            }
+            var ch=chars[i];c.value+=ch;
+            c.dispatchEvent(new Event('input',{bubbles:true}));
+            c.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
+            i++;setTimeout(proxChar,60);
+          }
+          proxChar();
+        },500);
+      },400);
+    },1200);
   }
 
   // ── RT manual ───────────────────────────────────────────────────
