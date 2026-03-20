@@ -244,18 +244,25 @@
     if(cbCap){jq(cbCap).iCheck('check');cbCap.checked=true;jq(cbCap).trigger('ifChecked').trigger('change');}
 
     setTimeout(function(){
+      if(window.OmegaMatarTimers) window.OmegaMatarTimers();
       U.box(st,true,'2/4 — Endereco...');
       preencherEnderecoComDados(cep,logradouro,numero,bairro,complemento,st,function(){
         setTimeout(function(){
+          if(window.OmegaMatarTimers) window.OmegaMatarTimers();
           U.box(st,true,'3/4 — Contatos...');
           adicionarContato('2',telefone,function(){
             setTimeout(function(){
+              if(window.OmegaMatarTimers) window.OmegaMatarTimers();
               adicionarContato('4',email,function(){
                 setTimeout(function(){
+                  if(window.OmegaMatarTimers) window.OmegaMatarTimers();
                   U.box(st,true,'4/4 — Gestor + RT...');
                   if(cpfSocio){
                     adicionarGestor(cpfSocio,st,function(){
-                      setTimeout(function(){adicionarRT(st,function(){window._omegaAutomacaoAtiva=false;U.box(st,true,'Automacao CNPJ concluida!');});},1500);
+                      setTimeout(function(){
+                        if(window.OmegaMatarTimers) window.OmegaMatarTimers();
+                        adicionarRT(st,function(){window._omegaAutomacaoAtiva=false;U.box(st,true,'Automacao CNPJ concluida!');});
+                      },1500);
                     });
                   } else {
                     adicionarRT(st,function(){window._omegaAutomacaoAtiva=false;U.box(st,false,'RT ok. Gestor sem CPF — adicione manualmente.');});
@@ -500,6 +507,9 @@
       });
     }
     if(!btn){callback();return;}
+    if(btn._omegaClicado){callback();return;}
+    btn._omegaClicado=true;
+    setTimeout(function(){btn._omegaClicado=false;},5000);
     btn.click();
     setTimeout(function(){
       var cpf=document.getElementById('Cpf');if(!cpf){callback();return;}
