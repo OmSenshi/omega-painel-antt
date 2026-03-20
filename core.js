@@ -169,8 +169,9 @@
     try{
       var idRef = unsafeWindow.setTimeout(function(){},1);
       unsafeWindow.clearTimeout(idRef);
-      for(var i=idRef; i>Math.max(0,idRef-300); i--){
+      for(var i=idRef; i>Math.max(0,idRef-500); i--){
         unsafeWindow.clearInterval(i);
+        unsafeWindow.clearTimeout(i);
       }
     }catch(e){}
   };
