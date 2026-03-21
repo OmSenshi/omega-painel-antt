@@ -3,37 +3,12 @@
   var U   = window.OmegaUtils;
   var jqR = unsafeWindow.jQuery || unsafeWindow.$;
 
-  // So roda na pagina de consulta
-  if(!document.getElementById('CpfCnpjTransportadorCertificado')) return;
+  var naPaginaConsulta = !!document.getElementById('CpfCnpjTransportadorCertificado');
 
-  // Le opcoes disponiveis no select da pagina
-  function carregarOpcoes(){
-    var sel = document.getElementById('CpfCnpjTransportadorCertificado');
-    if(!sel) return [];
-    return Array.from(sel.options).filter(function(o){ return o.value !== ''; }).map(function(o){
-      return {
-        valor: o.value,
-        texto: o.text.trim(),
-        rntrc: o.getAttribute('data-rntrc') || ''
-      };
-    });
-  }
-
-  function buildDropdown(opcoes){
-    if(opcoes.length === 0) return '<div style="font-size:11px;color:#aaa;text-align:center;padding:8px 0">Nenhum CPF/CNPJ disponivel na sessao.</div>';
-    var opts = '<option value="">Selecione...</option>';
-    opcoes.forEach(function(o){
-      var label = o.texto + (o.rntrc ? ' — RNTRC: '+o.rntrc : '');
-      opts += '<option value="'+o.valor+'" data-rntrc="'+o.rntrc+'">'+label+'</option>';
-    });
-    return '<select id="omega-em-sel" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:7px;font-size:11px;box-sizing:border-box;margin-bottom:8px">'+opts+'</select>';
-  }
-
-  var opcoes = carregarOpcoes();
-
+  // Conteudo inicial com loading
   U.registrarAba('emissao', 'Emissao', ''
     +'<div style="font-size:10px;font-weight:bold;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">CPF / CNPJ</div>'
-    +buildDropdown(opcoes)
+    +'<div id="omega-em-sel-wrapper"><div style="font-size:11px;color:#aaa;text-align:center;padding:8px 0">Carregando...</div></div>'
     +'<div id="omega-em-status" style="font-size:11px;min-height:0;border-radius:6px;padding:0;margin-bottom:8px"></div>'
     +'<div id="omega-em-botoes" style="display:none;grid-template-columns:1fr 1fr;gap:6px">'
       +'<button type="button" id="omega-em-cert" style="padding:9px;background:#34a853;color:#fff;border:none;border-radius:7px;font-size:12px;cursor:pointer;font-weight:bold">&#x1F4C4; Carteirinha</button>'
@@ -44,10 +19,61 @@
   var _urlCert = null;
   var _urlExt  = null;
 
-  var elSel = document.getElementById('omega-em-sel');
-  if(!elSel) return;
+  // ── Popula dropdown ─────────────────────────────────────────────
+  function popularDropdown(opcoes){
+    var wrapper = document.getElementById('omega-em-sel-wrapper');
+    if(!wrapper) return;
 
-  elSel.addEventListener('change', function(){
+    if(!opcoes || opcoes.length === 0){
+      wrapper.innerHTML = '<div style="font-size:11px;color:#aaa;text-align:center;padding:8px 0">Nenhum CPF/CNPJ disponivel.</div>';
+      return;
+    }
+
+    var opts = '<option value="">Selecione...</option>';
+    opcoes.forEach(function(o){
+      var label = o.texto + (o.rntrc ? ' — RNTRC: '+o.rntrc : '');
+      opts += '<option value="'+o.valor+'" data-rntrc="'+o.rntrc+'">'+label+'</option>';
+    });
+    wrapper.innerHTML = '<select id="omega-em-sel" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:7px;font-size:11px;box-sizing:border-box;margin-bottom:8px">'+opts+'</select>';
+
+    document.getElementById('omega-em-sel').addEventListener('change', onSelectChange);
+  }
+
+  // ── Carrega opcoes — da pagina atual ou via fetch ────────────────
+  if(naPaginaConsulta){
+    // Ja esta na pagina de consulta — le direto
+    var sel = document.getElementById('CpfCnpjTransportadorCertificado');
+    var opcoes = Array.from(sel.options).filter(function(o){ return o.value !== ''; }).map(function(o){
+      return { valor: o.value, texto: o.text.trim(), rntrc: o.getAttribute('data-rntrc') || '' };
+    });
+    popularDropdown(opcoes);
+  } else {
+    // Outras paginas — faz fetch silencioso de /Transportador/Consultar
+    jqR.ajax({
+      type: 'GET',
+      url: '/Transportador/Consultar',
+      success: function(html){
+        var div = document.createElement('div');
+        div.innerHTML = html;
+        var selRemoto = div.querySelector('#CpfCnpjTransportadorCertificado');
+        if(!selRemoto){
+          popularDropdown([]);
+          return;
+        }
+        var opcoes = Array.from(selRemoto.options).filter(function(o){ return o.value !== ''; }).map(function(o){
+          return { valor: o.value, texto: o.text.trim(), rntrc: o.getAttribute('data-rntrc') || '' };
+        });
+        popularDropdown(opcoes);
+      },
+      error: function(){
+        var wrapper = document.getElementById('omega-em-sel-wrapper');
+        if(wrapper) wrapper.innerHTML = '<div style="font-size:11px;color:#c0392b;text-align:center;padding:8px 0">Erro ao carregar. Tente na pagina <a href="/Transportador/Consultar" style="color:#1a73e8">Emitir Documentos</a>.</div>';
+      }
+    });
+  }
+
+  // ── Ao selecionar CPF/CNPJ ──────────────────────────────────────
+  function onSelectChange(){
     var st    = document.getElementById('omega-em-status');
     var valor = this.value;
     var opt   = this.options[this.selectedIndex];
@@ -60,7 +86,7 @@
 
     U.box(st, true, 'Consultando...');
 
-    // Sincroniza com o form da pagina
+    // Sincroniza com form da pagina (se existir)
     var selPagina = document.getElementById('CpfCnpjTransportadorCertificado');
     var hidPagina = document.getElementById('CpfCnpjTransportador');
     if(selPagina) selPagina.value = valor;
@@ -87,8 +113,7 @@
 
         if(!btnCert && !btnExt){
           var msgErro = div.querySelector('.alert, .text-danger, .validation-summary-errors');
-          var textoErro = msgErro ? msgErro.textContent.trim() : 'Nao foi possivel emitir para este CPF/CNPJ.';
-          return U.box(st, false, textoErro);
+          return U.box(st, false, msgErro ? msgErro.textContent.trim() : 'Nao foi possivel emitir para este CPF/CNPJ.');
         }
 
         if(btnCert) _urlCert = btnCert.getAttribute('data-pdf');
@@ -98,7 +123,7 @@
         if(_urlCert) _urlCert = _urlCert.replace(/filename=[^&]+/, 'filename=Carteirinha'+sufixo+'.pdf');
         if(_urlExt)  _urlExt  = _urlExt.replace(/filename=[^&]+/,  'filename=Extrato'+sufixo+'.pdf');
 
-        // Atualiza resultado visivel na pagina
+        // Atualiza resultado na pagina de consulta (se estiver nela)
         var resultadoEl = document.getElementById('ConsutarTransportador');
         if(resultadoEl) resultadoEl.innerHTML = html;
 
@@ -115,8 +140,9 @@
         U.box(st, false, msg);
       }
     });
-  });
+  }
 
+  // ── Emitir PDFs ─────────────────────────────────────────────────
   function abrirPDF(url){
     if(!url) return;
     unsafeWindow.open('https://rntrcdigital.antt.gov.br' + url, '_blank');
