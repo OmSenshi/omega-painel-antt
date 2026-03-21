@@ -15,8 +15,13 @@
       +'<button type="button" id="omega-em-ext"  style="padding:9px;background:#1a73e8;color:#fff;border:none;border-radius:7px;font-size:12px;cursor:pointer;font-weight:bold">&#x1F4C4; Extrato</button>'
     +'</div>'
   , function(){
-    // Chamado quando aba e aberta — renderiza se ja tiver dados em cache
-    if(_opcoesCached !== null) _renderDropdown(_opcoesCached);
+    // Chamado quando aba e aberta
+    if(window._omegaEmissaoErroMsg){
+      var wrapper = document.getElementById('omega-em-sel-wrapper');
+      if(wrapper){ wrapper.innerHTML = window._omegaEmissaoErroMsg; window._omegaEmissaoErroMsg = null; }
+    } else if(_opcoesCached !== null){
+      _renderDropdown(_opcoesCached);
+    }
   });
 
   var _urlCert = null;
@@ -58,7 +63,7 @@
     popularDropdown(opcoes);
   } else {
     // Outras paginas — faz fetch silencioso de /Transportador/Consultar
-    fetch('/Transportador/Consultar')
+    unsafeWindow.fetch('/Transportador/Consultar')
       .then(function(r){ return r.text(); })
       .then(function(html){
         var div = document.createElement('div');
@@ -70,9 +75,13 @@
         });
         popularDropdown(opcoes);
       })
-      .catch(function(){
+      .catch(function(e){
+        console.log('[OMEGA] fetch erro:', e);
+        _opcoesCached = []; // marca como carregado mas vazio
         var wrapper = document.getElementById('omega-em-sel-wrapper');
-        if(wrapper) wrapper.innerHTML = '<div style="font-size:11px;color:#c0392b;text-align:center;padding:8px 0">Erro ao carregar. Tente na pagina <a href="/Transportador/Consultar" style="color:#1a73e8">Emitir Documentos</a>.</div>';
+        var msg = '<div style="font-size:11px;color:#c0392b;text-align:center;padding:8px 0">Erro ao carregar. <a href="/Transportador/Consultar" style="color:#1a73e8">Abrir pagina de emissao</a></div>';
+        if(wrapper) wrapper.innerHTML = msg;
+        else if(!window._omegaEmissaoErroMsg) window._omegaEmissaoErroMsg = msg;
       });
   }
 
