@@ -49,27 +49,22 @@
     popularDropdown(opcoes);
   } else {
     // Outras paginas — faz fetch silencioso de /Transportador/Consultar
-    jqR.ajax({
-      type: 'GET',
-      url: '/Transportador/Consultar',
-      success: function(html){
+    fetch('/Transportador/Consultar')
+      .then(function(r){ return r.text(); })
+      .then(function(html){
         var div = document.createElement('div');
         div.innerHTML = html;
         var selRemoto = div.querySelector('#CpfCnpjTransportadorCertificado');
-        if(!selRemoto){
-          popularDropdown([]);
-          return;
-        }
+        if(!selRemoto){ popularDropdown([]); return; }
         var opcoes = Array.from(selRemoto.options).filter(function(o){ return o.value !== ''; }).map(function(o){
           return { valor: o.value, texto: o.text.trim(), rntrc: o.getAttribute('data-rntrc') || '' };
         });
         popularDropdown(opcoes);
-      },
-      error: function(){
+      })
+      .catch(function(){
         var wrapper = document.getElementById('omega-em-sel-wrapper');
         if(wrapper) wrapper.innerHTML = '<div style="font-size:11px;color:#c0392b;text-align:center;padding:8px 0">Erro ao carregar. Tente na pagina <a href="/Transportador/Consultar" style="color:#1a73e8">Emitir Documentos</a>.</div>';
-      }
-    });
+      });
   }
 
   // ── Ao selecionar CPF/CNPJ ──────────────────────────────────────
