@@ -14,28 +14,37 @@
       +'<button type="button" id="omega-em-cert" style="padding:9px;background:#34a853;color:#fff;border:none;border-radius:7px;font-size:12px;cursor:pointer;font-weight:bold">&#x1F4C4; Carteirinha</button>'
       +'<button type="button" id="omega-em-ext"  style="padding:9px;background:#1a73e8;color:#fff;border:none;border-radius:7px;font-size:12px;cursor:pointer;font-weight:bold">&#x1F4C4; Extrato</button>'
     +'</div>'
-  );
+  , function(){
+    // Chamado quando aba e aberta — renderiza se ja tiver dados em cache
+    if(_opcoesCached !== null) _renderDropdown(_opcoesCached);
+  });
 
   var _urlCert = null;
   var _urlExt  = null;
 
   // ── Popula dropdown ─────────────────────────────────────────────
+  var _opcoesCached = null;
+
   function popularDropdown(opcoes){
+    _opcoesCached = opcoes;
+    var wrapper = document.getElementById('omega-em-sel-wrapper');
+    if(!wrapper) return; // sera chamado novamente quando a aba abrir
+    _renderDropdown(opcoes);
+  }
+
+  function _renderDropdown(opcoes){
     var wrapper = document.getElementById('omega-em-sel-wrapper');
     if(!wrapper) return;
-
     if(!opcoes || opcoes.length === 0){
       wrapper.innerHTML = '<div style="font-size:11px;color:#aaa;text-align:center;padding:8px 0">Nenhum CPF/CNPJ disponivel.</div>';
       return;
     }
-
     var opts = '<option value="">Selecione...</option>';
     opcoes.forEach(function(o){
       var label = o.texto + (o.rntrc ? ' — RNTRC: '+o.rntrc : '');
       opts += '<option value="'+o.valor+'" data-rntrc="'+o.rntrc+'">'+label+'</option>';
     });
     wrapper.innerHTML = '<select id="omega-em-sel" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:7px;font-size:11px;box-sizing:border-box;margin-bottom:8px">'+opts+'</select>';
-
     document.getElementById('omega-em-sel').addEventListener('change', onSelectChange);
   }
 
