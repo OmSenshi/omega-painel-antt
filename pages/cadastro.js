@@ -293,165 +293,187 @@
     ST(function(){ btn._omegaClicado=false; }, 10000);
     btn.click();
 
-    ST(function(){
+    var cepFinal=(cep?cep:cepAleatorio('MG')).replace(/\D/g,'');
+    var temDados=!!(cep&&logradouro&&logradouro!=='0');
+
+    // PASSO 1: polling modal abrir
+    var tentModal=0;
+    function pollModal(){
+      tentModal++;
       var campoCep=document.getElementById('Cep');
-      if(!campoCep){ U.box(st,false,'Modal de endereco nao abriu.'); callback(); return; }
-      var cepFinal=(cep?cep:cepAleatorio('MG')).replace(/\D/g,'');
-      var temDados=!!(cep&&logradouro&&logradouro!=='0');
-
-      // Aguarda dropdown de tipo carregar — ST recursivo (seguro contra matarTimers)
-      var tentTipo=0;
-      function pollTipo(){
-        tentTipo++;
-        var ct=document.getElementById('CodigoTipoEndereco');
-        if(ct&&ct.options.length>1){
-          ct.value='COR';
-          ct.selectedIndex=Array.from(ct.options).findIndex(function(o){return o.value==='COR';});
-          jqR(ct).trigger('change');
-        } else if(tentTipo<15){
-          ST(pollTipo,200);
-        }
-      }
-      pollTipo();
-
-      // Digita CEP
-      ST(function(){
-        campoCep.value=''; campoCep.focus(); campoCep.dispatchEvent(new Event('focus',{bubbles:true}));
-        var i=0;
-        function proxChar(){
-          if(i>=cepFinal.length){
-            campoCep.dispatchEvent(new Event('input',{bubbles:true}));
-            campoCep.dispatchEvent(new Event('change',{bubbles:true}));
-            campoCep.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,key:'Tab',keyCode:9}));
-            campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:'Tab',keyCode:9}));
-            campoCep.dispatchEvent(new Event('blur',{bubbles:true}));
-            var l=document.getElementById('Logradouro');
-            if(l){l.focus(); ST(function(){l.blur();},100);}
-            // Aguarda logradouro carregar — ST recursivo
-            var tentLog=0;
-            function pollLog(){
-              tentLog++;
-              var l2=document.getElementById('Logradouro');
-              if((l2&&l2.value&&l2.value.trim()!=='')||tentLog>=20){
-                ST(function(){
-                  var l3=document.getElementById('Logradouro'),n3=document.getElementById('Numero'),b3=document.getElementById('Bairro'),c3=document.getElementById('Complemento');
-                  if(l3){l3.value=temDados?logradouro:'0'; jqR(l3).trigger('input').trigger('change');}
-                  if(n3){n3.value=temDados?(numero||'0'):'0'; jqR(n3).trigger('input').trigger('change');}
-                  if(b3){b3.value=temDados?(bairro||'0'):'0'; jqR(b3).trigger('input').trigger('change');}
-                  if(c3&&complemento&&temDados){c3.value=complemento; jqR(c3).trigger('input').trigger('change');}
-                  ST(function(){
-                    // Marca MesmoEndereco
-                    var cb=document.getElementById('MesmoEndereco');
-                    if(cb&&!cb.checked){ try{jqR(cb).iCheck('check');}catch(e){} cb.checked=true; jqR(cb).trigger('ifChecked').trigger('change'); }
-                    ST(function(){
-                      var btnS=document.querySelector('.btn-salvar-endereco');
-                      if(btnS&&!btnS._omegaClicado){
-                        btnS._omegaClicado=true; btnS.click();
-                        ST(function(){btnS._omegaClicado=false;},5000);
-                      }
-                      matarTimers();
-                      ST(callback,2000);
-                    },600);
-                  },500);
-                },400);
+      if(campoCep){
+        // PASSO 2: polling tipo carregar
+        var tentTipo=0;
+        function pollTipo(){
+          tentTipo++;
+          var ct=document.getElementById('CodigoTipoEndereco');
+          if(ct&&ct.options.length>1){
+            ct.value='COR';
+            ct.selectedIndex=Array.from(ct.options).findIndex(function(o){return o.value==='COR';});
+            jqR(ct).trigger('change');
+            // PASSO 3: confirma tipo COR antes de digitar CEP
+            var tentConf=0;
+            function pollConfTipo(){
+              tentConf++;
+              var ctNow=document.getElementById('CodigoTipoEndereco');
+              if(ctNow&&ctNow.value==='COR'){
+                digitarCEP(document.getElementById('Cep'));
+              } else if(tentConf<10){
+                if(ctNow){ ctNow.value='COR'; jqR(ctNow).trigger('change'); }
+                ST(pollConfTipo,200);
               } else {
-                ST(pollLog,500);
+                digitarCEP(document.getElementById('Cep'));
               }
             }
-            pollLog();
-            return;
-          }
-          var ch=cepFinal[i]; campoCep.value+=ch;
-          campoCep.dispatchEvent(new Event('input',{bubbles:true}));
-          campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
-          i++; ST(proxChar,100);
+            ST(pollConfTipo,200);
+          } else if(tentTipo<20){ ST(pollTipo,200); }
+          else { digitarCEP(campoCep); }
         }
-        proxChar();
-      },500);
-    },1500);
+        pollTipo();
+      } else if(tentModal<30){ ST(pollModal,200); }
+      else { U.box(st,false,'Modal de endereco nao abriu.'); callback(); }
+    }
+    pollModal();
+
+    function digitarCEP(campoCep){
+      if(!campoCep){ U.box(st,false,'Campo CEP nao encontrado.'); callback(); return; }
+      campoCep.value=''; campoCep.focus(); campoCep.dispatchEvent(new Event('focus',{bubbles:true}));
+      var i=0;
+      function proxChar(){
+        if(i>=cepFinal.length){
+          campoCep.dispatchEvent(new Event('input',{bubbles:true}));
+          campoCep.dispatchEvent(new Event('change',{bubbles:true}));
+          campoCep.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,key:'Tab',keyCode:9}));
+          campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:'Tab',keyCode:9}));
+          campoCep.dispatchEvent(new Event('blur',{bubbles:true}));
+          var l=document.getElementById('Logradouro');
+          if(l){l.focus(); ST(function(){l.blur();},100);}
+          // PASSO 4: polling logradouro
+          var tentLog=0;
+          function pollLog(){
+            tentLog++;
+            var l2=document.getElementById('Logradouro');
+            if((l2&&l2.value&&l2.value.trim()!=='')||tentLog>=20){
+              ST(function(){
+                var l3=document.getElementById('Logradouro'),n3=document.getElementById('Numero'),b3=document.getElementById('Bairro'),c3=document.getElementById('Complemento');
+                if(l3){l3.value=temDados?logradouro:'0'; jqR(l3).trigger('input').trigger('change');}
+                if(n3){n3.value=temDados?(numero||'0'):'0'; jqR(n3).trigger('input').trigger('change');}
+                if(b3){b3.value=temDados?(bairro||'0'):'0'; jqR(b3).trigger('input').trigger('change');}
+                if(c3&&complemento&&temDados){c3.value=complemento; jqR(c3).trigger('input').trigger('change');}
+                ST(function(){
+                  var cb=document.getElementById('MesmoEndereco');
+                  if(cb&&!cb.checked){ try{jqR(cb).iCheck('check');}catch(e){} cb.checked=true; jqR(cb).trigger('ifChecked').trigger('change'); }
+                  ST(function(){
+                    var btnS=document.querySelector('.btn-salvar-endereco');
+                    if(btnS&&!btnS._omegaClicado){
+                      btnS._omegaClicado=true; btnS.click();
+                      ST(function(){btnS._omegaClicado=false;},5000);
+                    }
+                    matarTimers();
+                    ST(callback,2000);
+                  },600);
+                },500);
+              },400);
+            } else { ST(pollLog,500); }
+          }
+          pollLog();
+          return;
+        }
+        var ch=cepFinal[i]; campoCep.value+=ch;
+        campoCep.dispatchEvent(new Event('input',{bubbles:true}));
+        campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
+        i++; ST(proxChar,100);
+      }
+      proxChar();
+    }
   }
 
   // ── Contato (telefone OU email — chamado separadamente) ─────────
   function adicionarContato(tipoVal,contatoVal,callback){
     var btn=document.querySelector('button[data-action*="ContatoPedido/Novo"]');
     if(!btn){ callback(false); return; }
-    // Reseta flag se ainda ativa de chamada anterior
     if(btn._omegaClicado){ btn._omegaClicado=false; }
     btn._omegaClicado=true;
     ST(function(){btn._omegaClicado=false;},8000);
     btn.click();
+
     ST(function(){
       var t=document.getElementById('CodigoTipoContato');
       if(!t){ callback(false); return; }
+
       // Seleciona o tipo
       t.value=tipoVal; jqR(t).trigger('change');
-      ST(function(){
-        // Confirma tipo e re-busca campo (portal pode substituir o input ao mudar tipo)
-        t.value=tipoVal; jqR(t).trigger('change');
-        ST(function(){
-          // Re-busca referencia ao campo apos mudanca de tipo
-          var c=document.getElementById('Contato');
-          if(!c){ callback(false); return; }
-          c.value=''; c.focus(); c.click();
-          c.dispatchEvent(new Event('focus',{bubbles:true}));
-          var chars=contatoVal.split(''),i=0;
-          function proxChar(){
-            if(i>=chars.length){
-              // Re-busca novamente antes de verificar valor
-              c=document.getElementById('Contato');
-              c.dispatchEvent(new Event('change',{bubbles:true}));
-              c.dispatchEvent(new Event('blur',{bubbles:true}));
-              ST(function(){
-                // Verifica se campo tem valor antes de salvar
+
+      // Polling: aguarda dropdown confirmar o tipo correto antes de digitar
+      var tentTipo=0;
+      function pollTipoContato(){
+        tentTipo++;
+        var tAtual=document.getElementById('CodigoTipoContato');
+        if(tAtual&&tAtual.value===tipoVal){
+          // Tipo confirmado — aguarda campo Contato estar pronto
+          ST(function(){
+            var c=document.getElementById('Contato');
+            if(!c){ callback(false); return; }
+            c.value=''; c.focus(); c.click();
+            c.dispatchEvent(new Event('focus',{bubbles:true}));
+            var chars=contatoVal.split(''),i=0;
+            function proxChar(){
+              if(i>=chars.length){
                 c=document.getElementById('Contato');
-                if(!c||!c.value||c.value.trim()===''){
-                  // Campo vazio — fecha modal e reporta erro
-                  var btnFechar=document.querySelector('#manterContatoForm .close, .modal.show .close, .modal.show [data-dismiss="modal"]');
-                  if(btnFechar) btnFechar.click();
-                  // Remove backdrop se ficou preso
-                  ST(function(){
-                    document.querySelectorAll('.modal-backdrop').forEach(function(el){el.remove();});
-                    document.body.classList.remove('modal-open');
-                  },300);
-                  callback(false);
-                  return;
-                }
-                var s=document.querySelector('.btn-salvar-contato');
-                if(s&&!s._omegaClicado){
-                  s._omegaClicado=true; s.click();
-                  ST(function(){s._omegaClicado=false;},5000);
-                  // Verifica se modal fechou (sucesso) ou ficou aberto (erro de validacao)
-                  ST(function(){
-                    var modalAberto=document.querySelector('#manterContatoForm');
-                    var visivel=modalAberto&&(modalAberto.closest('.modal.show')||document.querySelector('.modal.show #manterContatoForm'));
-                    if(visivel){
-                      // Modal ainda aberto = erro de validacao — fecha e reporta
-                      var btnFechar2=document.querySelector('.modal.show .close, .modal.show [data-dismiss="modal"]');
-                      if(btnFechar2) btnFechar2.click();
-                      ST(function(){
-                        document.querySelectorAll('.modal-backdrop').forEach(function(el){el.remove();});
-                        document.body.classList.remove('modal-open');
-                      },300);
-                      callback(false);
-                    } else {
-                      matarTimers();
-                      ST(function(){callback(true);},1500);
-                    }
-                  },1500);
-                } else if(!s) callback(false);
-              },600);
-              return;
+                c.dispatchEvent(new Event('change',{bubbles:true}));
+                c.dispatchEvent(new Event('blur',{bubbles:true}));
+                ST(function(){
+                  c=document.getElementById('Contato');
+                  if(!c||!c.value||c.value.trim()===''){
+                    var btnFechar=document.querySelector('.modal.show .close, .modal.show [data-dismiss="modal"]');
+                    if(btnFechar) btnFechar.click();
+                    ST(function(){
+                      document.querySelectorAll('.modal-backdrop').forEach(function(el){el.remove();});
+                      document.body.classList.remove('modal-open');
+                    },300);
+                    callback(false); return;
+                  }
+                  var s=document.querySelector('.btn-salvar-contato');
+                  if(s&&!s._omegaClicado){
+                    s._omegaClicado=true; s.click();
+                    ST(function(){s._omegaClicado=false;},5000);
+                    ST(function(){
+                      var modalAberto=document.querySelector('.modal.show #manterContatoForm');
+                      if(modalAberto){
+                        var btnFechar2=document.querySelector('.modal.show .close, .modal.show [data-dismiss="modal"]');
+                        if(btnFechar2) btnFechar2.click();
+                        ST(function(){
+                          document.querySelectorAll('.modal-backdrop').forEach(function(el){el.remove();});
+                          document.body.classList.remove('modal-open');
+                        },300);
+                        callback(false);
+                      } else {
+                        matarTimers();
+                        ST(function(){callback(true);},1500);
+                      }
+                    },1500);
+                  } else if(!s) callback(false);
+                },600);
+                return;
+              }
+              c=document.getElementById('Contato');
+              var ch=chars[i]; c.value+=ch;
+              c.dispatchEvent(new Event('input',{bubbles:true}));
+              c.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
+              i++; ST(proxChar,60);
             }
-            // Re-busca campo a cada caractere (previne referencia stale)
-            c=document.getElementById('Contato');
-            var ch=chars[i]; c.value+=ch;
-            c.dispatchEvent(new Event('input',{bubbles:true}));
-            c.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
-            i++; ST(proxChar,60);
-          }
-          proxChar();
-        },600); // delay maior apos confirmacao do tipo
-      },500);
+            proxChar();
+          },400);
+        } else if(tentTipo<20){
+          // Tenta novamente selecionar e aguarda
+          if(tAtual){ tAtual.value=tipoVal; jqR(tAtual).trigger('change'); }
+          ST(pollTipoContato,300);
+        } else {
+          // Timeout — nao conseguiu selecionar tipo
+          callback(false);
+        }
+      }
+      ST(pollTipoContato,300);
     },1200);
   }
 
@@ -466,65 +488,79 @@
     ST(function(){btn._omegaClicado=false;},10000);
     btn.click();
 
-    ST(function(){
-      var campoFunc=document.getElementById('CodigoTipoVinculo');
+    // PASSO 1: polling modal abrir (CpfCnpj presente)
+    var tentModal=0;
+    function pollModalGestor(){
+      tentModal++;
       var campoCPF=document.getElementById('CpfCnpj');
-      if(!campoCPF){ U.box(st,false,'Modal Gestor nao abriu.'); callback(); return; }
-      // Seleciona Socio sem trigger (evita erro AjustaFormularioTipoFuncao)
-      if(campoFunc) campoFunc.value='1';
-      // Aguarda campo estabilizar
-      ST(function(){
-        if(campoFunc&&campoFunc.value!=='1') campoFunc.value='1';
-        campoCPF=document.getElementById('CpfCnpj');
-        if(!campoCPF){ U.box(st,false,'Campo CPF nao encontrado.'); callback(); return; }
-        campoCPF.value=''; campoCPF.focus(); campoCPF.click();
-        campoCPF.dispatchEvent(new Event('focus',{bubbles:true}));
-        ST(function(){
-          // Digita CPF char a char
-          var chars=cpfFmt.split(''),i=0;
-          function proxChar(){
-            if(i>=chars.length){
-              campoCPF.dispatchEvent(new Event('change',{bubbles:true}));
-              campoCPF.dispatchEvent(new Event('blur',{bubbles:true}));
-              // Aguarda portal carregar o nome via AJAX — matarTimers so apos resposta
-              var tent=0;
-              function pollNomeGestor(){
-                tent++;
-                var nome=document.getElementById('Nome');
-                var btnS=document.querySelector('.btn-salvar-gestor');
-                if(nome&&nome.value&&nome.value.trim()!==''){
-                  // Nome carregado — agora mata timers e salva
-                  matarTimers();
-                  var cb=document.getElementById('isDeclaracaoIdoneoArtigo2');
-                  if(cb){ try{jqR(cb).iCheck('check');}catch(e){} cb.checked=true; jqR(cb).trigger('ifChecked').trigger('change'); }
-                  ST(function(){
-                    if(btnS&&!btnS._omegaClicado){
-                      btnS._omegaClicado=true; btnS.removeAttribute('disabled'); btnS.click();
-                      ST(function(){btnS._omegaClicado=false;},5000);
-                    }
-                    matarTimers();
-                    ST(callback,2500);
-                  },800);
-                } else if(tent>30){
-                  // Timeout — portal nao respondeu
-                  U.box(st,false,'Portal nao carregou nome do gestor. Verifique o CPF.');
-                  callback();
-                } else {
-                  ST(pollNomeGestor, 600);
-                }
-              }
-              pollNomeGestor();
-              return;
-            }
-            var ch=chars[i]; campoCPF.value+=ch;
-            campoCPF.dispatchEvent(new Event('input',{bubbles:true}));
-            campoCPF.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
-            i++; ST(proxChar,80);
+      var campoFunc=document.getElementById('CodigoTipoVinculo');
+      if(campoCPF){
+        // Seleciona Socio sem trigger (evita erro AjustaFormularioTipoFuncao)
+        if(campoFunc) campoFunc.value='1';
+        // PASSO 2: polling campo CPF estabilizar (nao disabled, nao readonly)
+        var tentCampo=0;
+        function pollCampoCPF(){
+          tentCampo++;
+          var c=document.getElementById('CpfCnpj');
+          if(c&&!c.disabled&&!c.readOnly){
+            // Confirma tipo vinculo
+            var cf=document.getElementById('CodigoTipoVinculo');
+            if(cf&&cf.value!=='1') cf.value='1';
+            c.value=''; c.focus(); c.click();
+            c.dispatchEvent(new Event('focus',{bubbles:true}));
+            ST(function(){ digitarCPFGestor(c); },200);
+          } else if(tentCampo<15){ ST(pollCampoCPF,200); }
+          else {
+            var c2=document.getElementById('CpfCnpj');
+            if(c2){ c2.value=''; c2.focus(); digitarCPFGestor(c2); }
+            else { U.box(st,false,'Campo CPF nao encontrado.'); callback(); }
           }
-          proxChar();
-        },300);
-      },1200);
-    },1500);
+        }
+        ST(pollCampoCPF,300);
+      } else if(tentModal<30){ ST(pollModalGestor,200); }
+      else { U.box(st,false,'Modal Gestor nao abriu.'); callback(); }
+    }
+    pollModalGestor();
+
+    function digitarCPFGestor(campoCPF){
+      var chars=cpfFmt.split(''),i=0;
+      function proxChar(){
+        if(i>=chars.length){
+          campoCPF.dispatchEvent(new Event('change',{bubbles:true}));
+          campoCPF.dispatchEvent(new Event('blur',{bubbles:true}));
+          // PASSO 3: polling nome (aguarda AJAX do portal — matarTimers so apos nome carregar)
+          var tent=0;
+          function pollNomeGestor(){
+            tent++;
+            var nome=document.getElementById('Nome');
+            var btnS=document.querySelector('.btn-salvar-gestor');
+            if(nome&&nome.value&&nome.value.trim()!==''){
+              matarTimers();
+              var cb=document.getElementById('isDeclaracaoIdoneoArtigo2');
+              if(cb){ try{jqR(cb).iCheck('check');}catch(e){} cb.checked=true; jqR(cb).trigger('ifChecked').trigger('change'); }
+              ST(function(){
+                if(btnS&&!btnS._omegaClicado){
+                  btnS._omegaClicado=true; btnS.removeAttribute('disabled'); btnS.click();
+                  ST(function(){btnS._omegaClicado=false;},5000);
+                }
+                matarTimers();
+                ST(callback,2500);
+              },800);
+            } else if(tent>30){
+              U.box(st,false,'Portal nao carregou nome do gestor. Verifique o CPF.');
+              callback();
+            } else { ST(pollNomeGestor,600); }
+          }
+          pollNomeGestor();
+          return;
+        }
+        var ch=chars[i]; campoCPF.value+=ch;
+        campoCPF.dispatchEvent(new Event('input',{bubbles:true}));
+        campoCPF.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
+        i++; ST(proxChar,80);
+      }
+      proxChar();
+    }
   }
 
   // ── RT ───────────────────────────────────────────────────────────
@@ -537,33 +573,37 @@
     btn._omegaClicado=true;
     ST(function(){btn._omegaClicado=false;},10000);
     btn.click();
-    ST(function(){
+    // Polling modal abrir (campo Cpf presente)
+    var tentModal=0;
+    function pollModalRT(){
+      tentModal++;
       var cpf=document.getElementById('Cpf');
-      if(!cpf){ callback(); return; }
-      cpf.value=CPF_RT; jqR(cpf).trigger('input').trigger('change').trigger('blur');
-      var tent=0;
-      function pollNomeRT(){
-        tent++;
-        var nome=document.getElementById('Nome'),btnS=document.getElementById('btnSalvar');
-        if((nome&&nome.value&&nome.value.trim()!=='')||tent>20){
-          if(!nome||!nome.value){ callback(); return; }
-          function marcarICheck(cb){ if(!cb)return; try{jqR(cb).iCheck('check');}catch(e){} cb.checked=true; jqR(cb).trigger('ifChecked').trigger('change'); }
-          marcarICheck(document.getElementById('FoiResponsavelTecnico'));
-          marcarICheck(document.getElementById('isDeclaracaoIdoneoArtigo2'));
-          ST(function(){
-            if(btnS&&!btnS._omegaClicado){
-              btnS._omegaClicado=true; btnS.removeAttribute('disabled'); btnS.click();
-              ST(function(){btnS._omegaClicado=false;},5000);
-            }
-            matarTimers();
-            ST(callback,2000);
-          },800);
-        } else {
-          ST(pollNomeRT, 600);
+      if(cpf){
+        cpf.value=CPF_RT; jqR(cpf).trigger('input').trigger('change').trigger('blur');
+        var tent=0;
+        function pollNomeRT(){
+          tent++;
+          var nome=document.getElementById('Nome'),btnS=document.getElementById('btnSalvar');
+          if((nome&&nome.value&&nome.value.trim()!=='')||tent>20){
+            if(!nome||!nome.value){ callback(); return; }
+            function marcarICheck(cb){ if(!cb)return; try{jqR(cb).iCheck('check');}catch(e){} cb.checked=true; jqR(cb).trigger('ifChecked').trigger('change'); }
+            marcarICheck(document.getElementById('FoiResponsavelTecnico'));
+            marcarICheck(document.getElementById('isDeclaracaoIdoneoArtigo2'));
+            ST(function(){
+              if(btnS&&!btnS._omegaClicado){
+                btnS._omegaClicado=true; btnS.removeAttribute('disabled'); btnS.click();
+                ST(function(){btnS._omegaClicado=false;},5000);
+              }
+              matarTimers();
+              ST(callback,2000);
+            },800);
+          } else { ST(pollNomeRT,600); }
         }
-      }
-      pollNomeRT();
-    },1500);
+        pollNomeRT();
+      } else if(tentModal<30){ ST(pollModalRT,200); }
+      else { callback(); }
+    }
+    pollModalRT();
   }
 
   // ── CEP manual (aba Acoes) ──────────────────────────────────────
@@ -574,18 +614,42 @@
     if(btn._omegaClicado) return;
     btn._omegaClicado=true; ST(function(){btn._omegaClicado=false;},10000);
     U.box(st,true,'Abrindo formulario...'); btn.click();
-    ST(function(){
+    var cepN=cep.replace(/\D/g,'');
+    // Polling modal abrir
+    var tentModal=0;
+    function pollModalManual(){
+      tentModal++;
       var campoCep=document.getElementById('Cep');
-      if(!campoCep) return U.box(st,false,'Modal nao abriu.');
-      var tentTipo2=0;
-      function pollTipo2(){
-        tentTipo2++;
-        var ct=document.getElementById('CodigoTipoEndereco');
-        if(ct&&ct.options.length>1){ ct.value='COR'; ct.selectedIndex=Array.from(ct.options).findIndex(function(o){return o.value==='COR';}); jqR(ct).trigger('change'); }
-        else if(tentTipo2<15){ ST(pollTipo2,200); }
-      }
-      pollTipo2();
-      var cepN=cep.replace(/\D/g,''); campoCep.value=''; campoCep.focus(); campoCep.dispatchEvent(new Event('focus',{bubbles:true}));
+      if(campoCep){
+        // Polling tipo carregar
+        var tentTipo=0;
+        function pollTipoManual(){
+          tentTipo++;
+          var ct=document.getElementById('CodigoTipoEndereco');
+          if(ct&&ct.options.length>1){
+            ct.value='COR'; ct.selectedIndex=Array.from(ct.options).findIndex(function(o){return o.value==='COR';}); jqR(ct).trigger('change');
+            // Confirma tipo antes de digitar
+            var tentConf=0;
+            function pollConfManual(){
+              tentConf++;
+              var ctNow=document.getElementById('CodigoTipoEndereco');
+              if(ctNow&&ctNow.value==='COR'){ digitarCEPManual(document.getElementById('Cep')); }
+              else if(tentConf<10){ if(ctNow){ctNow.value='COR';jqR(ctNow).trigger('change');} ST(pollConfManual,200); }
+              else { digitarCEPManual(document.getElementById('Cep')); }
+            }
+            ST(pollConfManual,200);
+          } else if(tentTipo<20){ ST(pollTipoManual,200); }
+          else { digitarCEPManual(campoCep); }
+        }
+        pollTipoManual();
+      } else if(tentModal<30){ ST(pollModalManual,200); }
+      else { U.box(st,false,'Modal nao abriu.'); }
+    }
+    pollModalManual();
+
+    function digitarCEPManual(campoCep){
+      if(!campoCep) return;
+      campoCep.value=''; campoCep.focus(); campoCep.dispatchEvent(new Event('focus',{bubbles:true}));
       var i=0;
       function proxChar(){
         if(i>=cepN.length){
@@ -594,11 +658,11 @@
           campoCep.dispatchEvent(new Event('blur',{bubbles:true}));
           var l=document.getElementById('Logradouro'); if(l){l.focus();ST(function(){l.blur();},100);}
           U.box(st,true,'CEP '+cep+' inserido...');
-          var tentLog2=0;
-          function pollLog2(){
-            tentLog2++;
+          var tentLog=0;
+          function pollLogManual(){
+            tentLog++;
             var l2=document.getElementById('Logradouro');
-            if((l2&&l2.value&&l2.value.trim()!=='')||tentLog2>=20){
+            if((l2&&l2.value&&l2.value.trim()!=='')||tentLog>=20){
               ST(function(){
                 var l3=document.getElementById('Logradouro'),n3=document.getElementById('Numero'),b3=document.getElementById('Bairro');
                 if(l3){l3.value='0';jqR(l3).trigger('input').trigger('change');}
@@ -617,9 +681,9 @@
                   },600);
                 },500);
               },300);
-            } else { ST(pollLog2,500); }
+            } else { ST(pollLogManual,500); }
           }
-          pollLog2();
+          pollLogManual();
           return;
         }
         var ch=cepN[i]; campoCep.value+=ch;
@@ -627,7 +691,7 @@
         i++; ST(proxChar,80);
       }
       proxChar();
-    },1500);
+    }
   }
 
   document.getElementById('omega-cep-mg').addEventListener('click',function(){preencherEnderecoManual('MG');});
@@ -673,33 +737,38 @@
   }
 
   function monitorarPopupsVeiculo(st,callback){
-    var tent=0,intv=setInterval(function(){
+    var tent=0;
+    function poll(){
       tent++;
       var bbSim=document.querySelector('.bootbox-confirm button[data-bb-handler="confirm"]');
       if(bbSim&&bbSim.offsetParent!==null){
-        clearInterval(intv); U.box(st,true,'Popup! Confirmando em 3s...');
-        setTimeout(function(){
+        U.box(st,true,'Popup! Confirmando em 3s...');
+        ST(function(){
           bbSim.click();
-          setTimeout(function(){
-            var t2=0,iv2=setInterval(function(){
+          ST(function(){
+            var t2=0;
+            function poll2(){
               t2++;
               var modal=document.getElementById('manterVeiculoModal'),titulo=modal?modal.querySelector('.modal-title'):null;
               var ehMov=titulo&&titulo.textContent.indexOf('Movimenta')!==-1;
               var vis=modal&&(modal.style.display==='block'||modal.classList.contains('show'));
               var btnEx=document.querySelector('.btn-confirmar-exclusao');
               if(ehMov&&vis&&btnEx){
-                clearInterval(iv2);
-                setTimeout(function(){btnEx.click();setTimeout(function(){var btnInc=document.querySelector('.btn-confirmar-inclusao');if(btnInc)btnInc.click();setTimeout(callback,1500);},1500);},500);
-              } else if(t2>=15){clearInterval(iv2);callback();}
-            },300);
+                ST(function(){btnEx.click();ST(function(){var btnInc=document.querySelector('.btn-confirmar-inclusao');if(btnInc)btnInc.click();ST(callback,1500);},1500);},500);
+              } else if(t2>=15){ callback(); }
+              else { ST(poll2,300); }
+            }
+            poll2();
           },1500);
         },3000);
         return;
       }
       var chassi=document.getElementById('Chassi');
-      if(chassi&&chassi.value&&chassi.value.trim()!==''){clearInterval(intv);callback();return;}
-      if(tent>=20){clearInterval(intv);callback();}
-    },300);
+      if(chassi&&chassi.value&&chassi.value.trim()!==''){ callback(); return; }
+      if(tent>=20){ callback(); return; }
+      ST(poll,300);
+    }
+    poll();
   }
 
   unsafeWindow.OmegaUsarVeiculoCad=function(idx){
