@@ -15,6 +15,7 @@
       +'<div style="font-size:10px;color:#888;letter-spacing:1px">Painel</div>'
     +'</div>'
     +'<span onclick="document.getElementById(\'antt-helper\').remove()" style="position:absolute;top:12px;right:14px;cursor:pointer;font-size:16px;color:#aaa">✕</span>'
+    +'<span id="omega-minimizar" onclick="OmegaMinimizar()" style="position:absolute;top:12px;right:36px;cursor:pointer;font-size:16px;color:#aaa;user-select:none">—</span>'
     // Abas unificadas — preenchidas pelos modulos
     +'<div id="omega-tabs" style="display:grid;gap:4px;margin-bottom:10px"></div>'
     // Conteudo das abas
@@ -182,6 +183,35 @@
       e.preventDefault(); e.returnValue=''; return '';
     }
   }, true);
+  unsafeWindow.OmegaMinimizar = function(){
+    var painel = document.getElementById('antt-helper');
+    var conteudo = document.getElementById('omega-tabs');
+    var content = document.getElementById('omega-content');
+    var hr = painel.querySelector('hr');
+    var rodape = painel.querySelector('div[style*="align-items:center"]');
+    var btnMin = document.getElementById('omega-minimizar');
+    var minimizado = painel.getAttribute('data-minimizado') === '1';
+    if(minimizado){
+      // Restaura
+      if(conteudo) conteudo.style.display='';
+      if(content)  content.style.display='';
+      if(hr)       hr.style.display='';
+      if(rodape)   rodape.style.display='';
+      painel.style.width='440px';
+      painel.setAttribute('data-minimizado','0');
+      if(btnMin) btnMin.textContent='—';
+    } else {
+      // Minimiza
+      if(conteudo) conteudo.style.display='none';
+      if(content)  content.style.display='none';
+      if(hr)       hr.style.display='none';
+      if(rodape)   rodape.style.display='none';
+      painel.style.width='160px';
+      painel.setAttribute('data-minimizado','1');
+      if(btnMin) btnMin.textContent='▢';
+    }
+  };
+
   unsafeWindow.OmegaConfigAPI = function() {
     var atual = window.OmegaUtils.getApiKey();
     var nova  = prompt('Cole sua chave da API Anthropic (sk-ant-...):', atual ? '********' : '');
