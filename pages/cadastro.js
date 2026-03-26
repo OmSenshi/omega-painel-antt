@@ -187,20 +187,14 @@
     var bairro      = document.getElementById('omega-cad-bairro').value.trim()||'0';
     var complemento = document.getElementById('omega-cad-complemento').value.trim();
 
-    U.box(st,true,'1/3 — Transportador...');
+    U.box(st,true,'1/2 — Transportador...');
     preencherTransportadorCPF(identidade, uf, function(){
       ST(function(){
         matarTimers();
-        U.box(st,true,'2/3 — Endereco...');
+        U.box(st,true,'2/2 — Endereco...');
         preencherEndereco(cep,logradouro,numero,bairro,complemento,st,function(){
-          ST(function(){
-            matarTimers();
-            U.box(st,true,'3/3 — RT...');
-            adicionarRT(st,function(){
-              window._omegaAutomacaoAtiva=false;
-              U.box(st,true,'Automacao CPF concluida!');
-            });
-          },1500);
+          window._omegaAutomacaoAtiva=false;
+          U.box(st,true,'Automacao CPF concluida!');
         });
       },1200);
     });
@@ -711,12 +705,40 @@
   unsafeWindow.OmegaUsarVeiculoCad=function(idx){
     var st=document.getElementById('omega-veiculo-status'),lista=carregarHistorico(),item=lista[idx];
     if(!item)return U.box(st,false,'Item nao encontrado.');
+
+    // Guard contra duplo clique no botão Usar
+    if(unsafeWindow._omegaVeiculoEmAndamento){
+      U.box(st,false,'Aguarde — ja ha um veiculo em andamento.');
+      return;
+    }
+    unsafeWindow._omegaVeiculoEmAndamento=true;
+    var _liberarGuard=function(){ unsafeWindow._omegaVeiculoEmAndamento=false; };
+
     var isMovimentacao=document.querySelector('[data-tipo-pedido="MovimentacaoFrota"]')!==null;
     var modal=document.getElementById('manterVeiculoModal'),popupAberto=modal&&(modal.style.display==='block'||modal.classList.contains('show'));
     var tituloModal=modal?modal.querySelector('.modal-title'):null,ehPopupVeiculo=tituloModal&&tituloModal.textContent.indexOf('Dados do Ve')!==-1;
+
     function preencher(){
-      var campoPlaca=document.getElementById('Placa'),campoRenavam=document.getElementById('Renavam'),btnVerificar=document.getElementById('verificar');
-      if(!campoPlaca||!campoRenavam)return U.box(st,false,'Modal do veiculo nao abriu.');
+      // Polling ate o modal carregar completamente (Placa e Renavam presentes)
+      var tentModal=0;
+      function aguardarModal(){
+        tentModal++;
+        var campoPlaca=document.getElementById('Placa'),campoRenavam=document.getElementById('Renavam');
+        if(campoPlaca&&campoRenavam){
+          U.box(st,true,'Modal aberto. Preenchendo...');
+          preencherCampos(campoPlaca,campoRenavam);
+        } else if(tentModal<30){
+          setTimeout(aguardarModal,200);
+        } else {
+          _liberarGuard();
+          U.box(st,false,'Modal do veiculo nao abriu.');
+        }
+      }
+      aguardarModal();
+    }
+
+    function preencherCampos(campoPlaca,campoRenavam){
+      var btnVerificar=document.getElementById('verificar');
       var placaVal=(item.placa||'').replace(/[^A-Z0-9]/gi,'').toUpperCase();
       campoPlaca.removeAttribute('disabled');campoPlaca.value='';campoPlaca.focus();campoPlaca.dispatchEvent(new Event('focus',{bubbles:true}));
       var i=0;
@@ -727,17 +749,28 @@
             campoRenavam.removeAttribute('disabled');campoRenavam.value=item.renavam||'';
             campoRenavam.dispatchEvent(new Event('input',{bubbles:true}));campoRenavam.dispatchEvent(new Event('change',{bubbles:true}));campoRenavam.dispatchEvent(new Event('blur',{bubbles:true}));
             setTimeout(function(){
-              jq.ajax({type:'GET',url:'/Veiculo/BuscarVeiculo',cache:false,data:{placa:campoPlaca.value.toUpperCase(),renavam:campoRenavam.value},
-                success:function(){setTimeout(function(){if(btnVerificar)btnVerificar.click();},500);},
-                error:function(){setTimeout(function(){if(btnVerificar)btnVerificar.click();},500);}
-              });
+              // Clica verificar apenas uma vez usando flag
+              if(btnVerificar&&!btnVerificar._omegaClicado){
+                btnVerificar._omegaClicado=true;
+                jq.ajax({type:'GET',url:'/Veiculo/BuscarVeiculo',cache:false,data:{placa:campoPlaca.value.toUpperCase(),renavam:campoRenavam.value},
+                  success:function(){setTimeout(function(){btnVerificar.click();setTimeout(function(){btnVerificar._omegaClicado=false;},3000);},500);},
+                  error:function(){setTimeout(function(){btnVerificar.click();setTimeout(function(){btnVerificar._omegaClicado=false;},3000);},500);}
+                });
+              }
               monitorarPopupsVeiculo(st,function(){
                 var tara=document.getElementById('Tara');
                 if(tara&&(!tara.value||tara.value==='')){tara.removeAttribute('disabled');tara.value='2';jq(tara).trigger('input').trigger('change');}
                 setTimeout(function(){
                   var btnS=document.querySelector('.btn-salvar-veiculo')||document.querySelector('.btn-confirmar-inclusao');
-                  if(btnS){btnS.removeAttribute('disabled');btnS.click();U.box(st,true,'Veiculo salvo! Placa: <b>'+campoPlaca.value+'</b>');}
-                  else U.box(st,false,'Botao Salvar nao encontrado.');
+                  if(btnS&&!btnS._omegaClicado){
+                    btnS._omegaClicado=true;
+                    btnS.removeAttribute('disabled');btnS.click();
+                    U.box(st,true,'Veiculo salvo! Placa: <b>'+campoPlaca.value+'</b>');
+                    setTimeout(function(){btnS._omegaClicado=false;},5000);
+                  } else if(!btnS){
+                    U.box(st,false,'Botao Salvar nao encontrado.');
+                  }
+                  _liberarGuard();
                 },800);
               });
             },400);
@@ -750,11 +783,16 @@
       }
       proxChar();
     }
+
     if(isMovimentacao&&popupAberto&&ehPopupVeiculo){U.box(st,true,'Preenchendo...');preencher();}
     else{
       var btnAdd=document.querySelector('[data-action*="VeiculoPedido/Novo"]');
-      if(!btnAdd)return U.box(st,false,'Botao Adicionar Veiculo nao encontrado.');
-      btnAdd.click();setTimeout(preencher,1500);
+      if(!btnAdd){_liberarGuard();return U.box(st,false,'Botao Adicionar Veiculo nao encontrado.');}
+      if(btnAdd._omegaClicado){_liberarGuard();return;}
+      btnAdd._omegaClicado=true;
+      setTimeout(function(){btnAdd._omegaClicado=false;},10000);
+      btnAdd.click();
+      preencher(); // polling cuida de esperar o modal
     }
   };
 
