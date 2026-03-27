@@ -296,41 +296,32 @@
     var cepFinal=(cep?cep:cepAleatorio('MG')).replace(/\D/g,'');
     var temDados=!!(cep&&logradouro&&logradouro!=='0');
 
-    // PASSO 1: polling modal abrir
+    // PASSO 1: polling modal completamente carregado (Cep E dropdown com options)
     var tentModal=0;
     function pollModal(){
       tentModal++;
       var campoCep=document.getElementById('Cep');
-      if(campoCep){
-        // PASSO 2: polling tipo carregar
-        var tentTipo=0;
-        function pollTipo(){
-          tentTipo++;
-          var ct=document.getElementById('CodigoTipoEndereco');
-          if(ct&&ct.options.length>1){
-            ct.value='COR';
-            ct.selectedIndex=Array.from(ct.options).findIndex(function(o){return o.value==='COR';});
-            jqR(ct).trigger('change');
-            // PASSO 3: confirma tipo COR antes de digitar CEP
-            var tentConf=0;
-            function pollConfTipo(){
-              tentConf++;
-              var ctNow=document.getElementById('CodigoTipoEndereco');
-              if(ctNow&&ctNow.value==='COR'){
-                digitarCEP(document.getElementById('Cep'));
-              } else if(tentConf<10){
-                if(ctNow){ ctNow.value='COR'; jqR(ctNow).trigger('change'); }
-                ST(pollConfTipo,200);
-              } else {
-                digitarCEP(document.getElementById('Cep'));
-              }
-            }
+      var ct=document.getElementById('CodigoTipoEndereco');
+      if(campoCep && ct && ct.options.length>1){
+        // Modal pronto — seleciona COR e confirma
+        ct.value='COR';
+        ct.selectedIndex=Array.from(ct.options).findIndex(function(o){return o.value==='COR';});
+        jqR(ct).trigger('change');
+        var tentConf=0;
+        function pollConfTipo(){
+          tentConf++;
+          var ctNow=document.getElementById('CodigoTipoEndereco');
+          if(ctNow&&ctNow.value==='COR'){
+            digitarCEP(document.getElementById('Cep'));
+          } else if(tentConf<10){
+            if(ctNow){ ctNow.value='COR'; jqR(ctNow).trigger('change'); }
             ST(pollConfTipo,200);
-          } else if(tentTipo<20){ ST(pollTipo,200); }
-          else { digitarCEP(campoCep); }
+          } else {
+            digitarCEP(document.getElementById('Cep'));
+          }
         }
-        pollTipo();
-      } else if(tentModal<30){ ST(pollModal,200); }
+        ST(pollConfTipo,300);
+      } else if(tentModal<40){ ST(pollModal,200); }
       else { U.box(st,false,'Modal de endereco nao abriu.'); callback(); }
     }
     pollModal();
@@ -615,35 +606,36 @@
     btn._omegaClicado=true; ST(function(){btn._omegaClicado=false;},10000);
     U.box(st,true,'Abrindo formulario...'); btn.click();
     var cepN=cep.replace(/\D/g,'');
-    // Polling modal abrir
+
+    // Polling: aguarda modal abrir E dropdown ter options (completamente carregado)
     var tentModal=0;
     function pollModalManual(){
       tentModal++;
       var campoCep=document.getElementById('Cep');
-      if(campoCep){
-        // Polling tipo carregar
-        var tentTipo=0;
-        function pollTipoManual(){
-          tentTipo++;
-          var ct=document.getElementById('CodigoTipoEndereco');
-          if(ct&&ct.options.length>1){
-            ct.value='COR'; ct.selectedIndex=Array.from(ct.options).findIndex(function(o){return o.value==='COR';}); jqR(ct).trigger('change');
-            // Confirma tipo antes de digitar
-            var tentConf=0;
-            function pollConfManual(){
-              tentConf++;
-              var ctNow=document.getElementById('CodigoTipoEndereco');
-              if(ctNow&&ctNow.value==='COR'){ digitarCEPManual(document.getElementById('Cep')); }
-              else if(tentConf<10){ if(ctNow){ctNow.value='COR';jqR(ctNow).trigger('change');} ST(pollConfManual,200); }
-              else { digitarCEPManual(document.getElementById('Cep')); }
-            }
+      var ct=document.getElementById('CodigoTipoEndereco');
+      // Exige tanto o campo Cep quanto o dropdown com options carregadas
+      if(campoCep && ct && ct.options.length>1){
+        // Modal completamente carregado — seleciona tipo COR
+        ct.value='COR';
+        ct.selectedIndex=Array.from(ct.options).findIndex(function(o){return o.value==='COR';});
+        jqR(ct).trigger('change');
+        // Confirma tipo antes de digitar
+        var tentConf=0;
+        function pollConfManual(){
+          tentConf++;
+          var ctNow=document.getElementById('CodigoTipoEndereco');
+          if(ctNow&&ctNow.value==='COR'){
+            digitarCEPManual(document.getElementById('Cep'));
+          } else if(tentConf<10){
+            if(ctNow){ctNow.value='COR';jqR(ctNow).trigger('change');}
             ST(pollConfManual,200);
-          } else if(tentTipo<20){ ST(pollTipoManual,200); }
-          else { digitarCEPManual(campoCep); }
+          } else {
+            digitarCEPManual(document.getElementById('Cep'));
+          }
         }
-        pollTipoManual();
-      } else if(tentModal<30){ ST(pollModalManual,200); }
-      else { U.box(st,false,'Modal nao abriu.'); }
+        ST(pollConfManual,300);
+      } else if(tentModal<40){ ST(pollModalManual,200); }
+      else { U.box(st,false,'Modal nao abriu ou dropdown nao carregou.'); }
     }
     pollModalManual();
 
