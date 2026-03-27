@@ -780,16 +780,19 @@
     var tituloModal=modal?modal.querySelector('.modal-title'):null,ehPopupVeiculo=tituloModal&&tituloModal.textContent.indexOf('Dados do Ve')!==-1;
 
     function preencher(){
-      // Polling ate o modal carregar completamente (Placa e Renavam presentes)
+      // Polling ate o modal estar VISIVEL e campos prontos para interacao
       var tentModal=0;
       function aguardarModal(){
         tentModal++;
-        var campoPlaca=document.getElementById('Placa'),campoRenavam=document.getElementById('Renavam');
-        if(campoPlaca&&campoRenavam){
+        var modal=document.getElementById('manterVeiculoModal');
+        var modalVisivel=modal&&(modal.style.display==='block'||modal.classList.contains('show'));
+        var campoPlaca=document.getElementById('Placa');
+        var campoRenavam=document.getElementById('Renavam');
+        if(modalVisivel&&campoPlaca&&campoRenavam){
           U.box(st,true,'Modal aberto. Preenchendo...');
           preencherCampos(campoPlaca,campoRenavam);
-        } else if(tentModal<30){
-          setTimeout(aguardarModal,200);
+        } else if(tentModal<40){
+          ST(aguardarModal,200);
         } else {
           _liberarGuard();
           U.box(st,false,'Modal do veiculo nao abriu.');
