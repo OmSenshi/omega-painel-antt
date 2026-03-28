@@ -1,24 +1,21 @@
-// core.js — Omega Painel: estrutura base (v58 — tema dark)
+// core.js — Omega Painel: estrutura base (v61 — drag + lembrar aba)
 (function(){
   if(document.getElementById('antt-helper'))return;
 
   window.OmegaJQ  = unsafeWindow.jQuery || unsafeWindow.$;
   window.OmegaMom = unsafeWindow.moment;
 
-  // ── Salva setTimeout nativo ANTES de qualquer coisa ─────────────
   window._setTimeoutNativo = unsafeWindow.setTimeout.bind(unsafeWindow);
   window._omegaAutomacaoAtiva = false;
 
-  // ── Helper global: setTimeout seguro ────────────────────────────
   window.ST = function(fn, ms){
     return window._setTimeoutNativo ? window._setTimeoutNativo(fn, ms) : setTimeout(fn, ms);
   };
 
-  // ── Injetar CSS global do tema ──────────────────────────────────
+  // ── CSS global ──────────────────────────────────────────────────
   var css = document.createElement('style');
   css.id = 'omega-theme';
   css.textContent = ''
-    // ── Painel ──
     +'#antt-helper{'
       +'position:fixed;top:20px;right:20px;z-index:999999;'
       +'background:rgba(14,18,30,0.97);'
@@ -29,8 +26,9 @@
       +'width:440px;color:#c8cdd8;'
       +'backdrop-filter:blur(20px);'
     +'}'
-    // ── Header ──
-    +'.om-header{text-align:center;margin-bottom:10px}'
+    // Header (drag handle)
+    +'.om-header{text-align:center;margin-bottom:10px;cursor:grab;user-select:none}'
+    +'.om-header:active{cursor:grabbing}'
     +'.om-logo{font-size:22px;font-weight:800;color:#1a73e8;letter-spacing:4px}'
     +'.om-sub{font-size:10px;color:#555e70;letter-spacing:2px;text-transform:uppercase}'
     +'.om-close,.om-min{'
@@ -40,7 +38,7 @@
     +'.om-close:hover,.om-min:hover{color:#c8cdd8}'
     +'.om-close{right:16px}'
     +'.om-min{right:40px}'
-    // ── Abas ──
+    // Abas
     +'#omega-tabs{display:grid;gap:4px;margin-bottom:12px}'
     +'#omega-tabs button{'
       +'padding:8px;border:1px solid rgba(26,115,232,0.2);border-radius:8px;'
@@ -53,7 +51,7 @@
       +'color:#fff;border-color:transparent;'
       +'box-shadow:0 2px 12px rgba(26,115,232,0.3);'
     +'}'
-    // ── Rodape ──
+    // Rodape
     +'.om-hr{border:none;border-top:1px solid rgba(255,255,255,0.05);margin:12px 0}'
     +'.om-rodape{display:flex;align-items:center;gap:6px}'
     +'.om-api-status{font-size:10px;color:#555e70;flex:1}'
@@ -63,88 +61,54 @@
       +'font-size:10px;color:#8a92a6;cursor:pointer;transition:all 0.2s;'
     +'}'
     +'.om-btn-api:hover{background:rgba(255,255,255,0.08);color:#c8cdd8}'
-    // ── Botoes ──
+    // Botoes
     +'.om-btn{'
       +'padding:9px 16px;border:none;border-radius:8px;'
       +'font-size:12px;font-weight:600;cursor:pointer;'
       +'transition:all 0.2s;letter-spacing:0.3px;'
     +'}'
     +'.om-btn:active{transform:scale(0.97)}'
-    +'.om-btn-blue{'
-      +'background:linear-gradient(135deg,#1a73e8,#1557b0);color:#fff;'
-      +'box-shadow:0 2px 12px rgba(26,115,232,0.25);'
-    +'}'
+    +'.om-btn-blue{background:linear-gradient(135deg,#1a73e8,#1557b0);color:#fff;box-shadow:0 2px 12px rgba(26,115,232,0.25)}'
     +'.om-btn-blue:hover{box-shadow:0 4px 18px rgba(26,115,232,0.35);filter:brightness(1.08)}'
-    +'.om-btn-green{'
-      +'background:linear-gradient(135deg,#34a853,#2d8f47);color:#fff;'
-      +'box-shadow:0 2px 12px rgba(52,168,83,0.25);'
-    +'}'
+    +'.om-btn-green{background:linear-gradient(135deg,#34a853,#2d8f47);color:#fff;box-shadow:0 2px 12px rgba(52,168,83,0.25)}'
     +'.om-btn-green:hover{box-shadow:0 4px 18px rgba(52,168,83,0.35);filter:brightness(1.08)}'
-    +'.om-btn-purple{'
-      +'background:linear-gradient(135deg,#6f42c1,#5a35a0);color:#fff;'
-      +'box-shadow:0 2px 12px rgba(111,66,193,0.25);'
-    +'}'
+    +'.om-btn-purple{background:linear-gradient(135deg,#6f42c1,#5a35a0);color:#fff;box-shadow:0 2px 12px rgba(111,66,193,0.25)}'
     +'.om-btn-purple:hover{box-shadow:0 4px 18px rgba(111,66,193,0.35);filter:brightness(1.08)}'
-    +'.om-btn-coral{'
-      +'background:linear-gradient(135deg,#e07065,#c0392b);color:#fff;'
-      +'box-shadow:0 2px 12px rgba(224,112,101,0.25);'
-    +'}'
+    +'.om-btn-coral{background:linear-gradient(135deg,#e07065,#c0392b);color:#fff;box-shadow:0 2px 12px rgba(224,112,101,0.25)}'
     +'.om-btn-coral:hover{box-shadow:0 4px 18px rgba(224,112,101,0.35);filter:brightness(1.08)}'
     +'.om-btn-sm{padding:5px 12px;font-size:11px;border-radius:6px}'
     +'.om-btn-full{width:100%}'
-    // ── Botoes de lista (hist) ──
-    +'.om-btn-list{'
-      +'padding:5px 10px;border:none;border-radius:6px;'
-      +'font-size:11px;cursor:pointer;transition:all 0.2s;font-weight:500;'
-    +'}'
+    +'.om-btn-list{padding:5px 10px;border:none;border-radius:6px;font-size:11px;cursor:pointer;transition:all 0.2s;font-weight:500}'
     +'.om-btn-list:active{transform:scale(0.95)}'
-    +'.om-btn-del{'
-      +'background:rgba(192,57,43,0.12);color:#e07065;'
-      +'border:1px solid rgba(192,57,43,0.15);'
-    +'}'
+    +'.om-btn-del{background:rgba(192,57,43,0.12);color:#e07065;border:1px solid rgba(192,57,43,0.15)}'
     +'.om-btn-del:hover{background:rgba(192,57,43,0.2)}'
-    // ── Inputs ──
+    // Inputs
     +'.om-input{'
       +'width:100%;padding:8px 10px;'
       +'background:rgba(255,255,255,0.04);'
       +'border:1px solid rgba(255,255,255,0.08);'
       +'border-radius:8px;font-size:12px;color:#c8cdd8;'
-      +'outline:none;transition:border-color 0.2s;'
-      +'box-sizing:border-box;'
+      +'outline:none;transition:border-color 0.2s;box-sizing:border-box;'
     +'}'
     +'.om-input:focus{border-color:rgba(26,115,232,0.4);background:rgba(255,255,255,0.06)}'
     +'.om-input::placeholder{color:#3a3f4e}'
     +'.om-input-sm{padding:6px 8px;font-size:11px}'
-    +'.om-select{'
-      +'width:100%;padding:7px 10px;'
-      +'background:rgba(255,255,255,0.04);'
-      +'border:1px solid rgba(255,255,255,0.08);'
-      +'border-radius:8px;font-size:11px;color:#c8cdd8;'
-      +'outline:none;box-sizing:border-box;'
-      +'cursor:pointer;'
-    +'}'
+    +'.om-select{width:100%;padding:7px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;font-size:11px;color:#c8cdd8;outline:none;box-sizing:border-box;cursor:pointer}'
     +'.om-select option{background:#0e121e;color:#c8cdd8}'
-    // ── Labels & textos ──
+    // Labels
     +'.om-label{font-size:10px;color:#555e70;letter-spacing:0.5px;display:block;margin-bottom:3px}'
-    +'.om-section-title{'
-      +'font-size:10px;font-weight:600;color:#8a92a6;'
-      +'text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;'
-    +'}'
-    // ── Status boxes ──
+    +'.om-section-title{font-size:10px;font-weight:600;color:#8a92a6;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}'
+    // Status
     +'.om-box{margin-top:6px;font-size:11px;border-radius:8px;padding:8px 12px;line-height:1.5}'
     +'.om-box-ok{background:rgba(52,168,83,0.08);color:#5ddb7a;border:1px solid rgba(52,168,83,0.15)}'
     +'.om-box-err{background:rgba(192,57,43,0.08);color:#e07065;border:1px solid rgba(192,57,43,0.15)}'
-    // ── Previews ──
+    // Previews
     +'.om-preview{font-size:10px;color:#555e70;min-height:14px;margin-top:3px}'
     +'.om-preview .ok{color:#5ddb7a}'
     +'.om-preview .warn{color:#f0ad4e}'
-    // ── Badge ──
-    +'.om-badge{'
-      +'font-size:11px;font-weight:600;color:#fff;'
-      +'background:linear-gradient(135deg,#1a73e8,#1557b0);'
-      +'border-radius:6px;padding:3px 10px;display:inline-block;margin-bottom:8px;'
-    +'}'
-    // ── Layout helpers ──
+    // Badge
+    +'.om-badge{font-size:11px;font-weight:600;color:#fff;background:linear-gradient(135deg,#1a73e8,#1557b0);border-radius:6px;padding:3px 10px;display:inline-block;margin-bottom:8px}'
+    // Layout
     +'.om-grid{display:grid;gap:6px}'
     +'.om-grid-2{grid-template-columns:1fr 1fr}'
     +'.om-grid-3{grid-template-columns:1fr 1fr 1fr}'
@@ -152,26 +116,24 @@
     +'.om-flex{display:flex;gap:6px}'
     +'.om-mb-sm{margin-bottom:6px}'
     +'.om-mb{margin-bottom:8px}'
-    // ── Dropzone ──
-    +'.om-dropzone{'
-      +'border:2px dashed rgba(26,115,232,0.25);border-radius:10px;'
-      +'padding:16px;text-align:center;cursor:pointer;'
-      +'margin-bottom:8px;transition:all 0.2s;'
-    +'}'
+    // Dropzone
+    +'.om-dropzone{border:2px dashed rgba(26,115,232,0.25);border-radius:10px;padding:16px;text-align:center;cursor:pointer;margin-bottom:8px;transition:all 0.2s}'
     +'.om-dropzone:hover{border-color:rgba(26,115,232,0.45);background:rgba(26,115,232,0.04)}'
     +'.om-dropzone-active{border-color:rgba(26,115,232,0.5);background:rgba(26,115,232,0.06)}'
     +'.om-drop-txt{font-size:11px;color:#555e70}'
     +'.om-drop-txt span{font-size:10px}'
-    // ── Historico items ──
-    +'.om-hist-item{'
-      +'display:flex;align-items:center;justify-content:space-between;'
-      +'padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04);'
-    +'}'
+    // Historico
+    +'.om-hist-item{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04)}'
     +'.om-hist-item:last-child{border-bottom:none}'
     +'.om-hist-placa{font-size:12px;font-weight:700;color:#c8cdd8}'
     +'.om-hist-tempo{font-size:10px;color:#555e70}'
     +'.om-hist-scroll{max-height:220px;overflow-y:auto}'
     +'.om-vazio{font-size:11px;color:#3a3f4e;text-align:center;padding:20px 0}'
+    // Resumo pre-automacao
+    +'.om-resumo{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:11px;line-height:1.7}'
+    +'.om-resumo-label{color:#555e70;font-size:10px}'
+    +'.om-resumo-valor{color:#c8cdd8;font-weight:600}'
+    +'.om-resumo-aleatorio{color:#f0ad4e;font-style:italic;font-weight:400}'
   ;
   document.head.appendChild(css);
 
@@ -179,7 +141,7 @@
   var s = document.createElement('div');
   s.id = 'antt-helper';
   s.innerHTML = ''
-    +'<div class="om-header">'
+    +'<div class="om-header" id="omega-drag-handle">'
       +'<div class="om-logo">OMEGA</div>'
       +'<div class="om-sub">Painel</div>'
     +'</div>'
@@ -194,7 +156,59 @@
     +'</div>';
   document.body.appendChild(s);
 
-  // ── Sistema de abas unificado ───────────────────────────────────
+  // ── Drag para mover o painel ────────────────────────────────────
+  (function(){
+    var handle = document.getElementById('omega-drag-handle');
+    var painel = document.getElementById('antt-helper');
+    var dragging = false, offX = 0, offY = 0;
+
+    handle.addEventListener('mousedown', function(e){
+      if(e.target.classList.contains('om-close') || e.target.classList.contains('om-min')) return;
+      dragging = true;
+      var rect = painel.getBoundingClientRect();
+      offX = e.clientX - rect.left;
+      offY = e.clientY - rect.top;
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', function(e){
+      if(!dragging) return;
+      var newX = e.clientX - offX;
+      var newY = e.clientY - offY;
+      // Limitar dentro da viewport
+      newX = Math.max(0, Math.min(newX, window.innerWidth - painel.offsetWidth));
+      newY = Math.max(0, Math.min(newY, window.innerHeight - 40));
+      painel.style.left = newX + 'px';
+      painel.style.top = newY + 'px';
+      painel.style.right = 'auto';
+    });
+
+    document.addEventListener('mouseup', function(){
+      if(dragging){
+        dragging = false;
+        // Salvar posição
+        try{
+          var rect = painel.getBoundingClientRect();
+          if(typeof GM_setValue !== 'undefined') GM_setValue('omega_pos', JSON.stringify({left:rect.left, top:rect.top}));
+        }catch(e){}
+      }
+    });
+
+    // Restaurar posição salva
+    try{
+      var posRaw = (typeof GM_getValue !== 'undefined') ? GM_getValue('omega_pos','') : '';
+      if(posRaw){
+        var pos = JSON.parse(posRaw);
+        if(pos.left >= 0 && pos.top >= 0 && pos.left < window.innerWidth && pos.top < window.innerHeight){
+          painel.style.left = pos.left + 'px';
+          painel.style.top = pos.top + 'px';
+          painel.style.right = 'auto';
+        }
+      }
+    }catch(e){}
+  })();
+
+  // ── Sistema de abas (com memoria) ──────────────────────────────
   window._OmegaAbas = [];
 
   unsafeWindow.OmegaAba = function(abaId) {
@@ -208,6 +222,8 @@
     if(window._OmegaAbaCallbacks && window._OmegaAbaCallbacks[abaId]){
       window._OmegaAbaCallbacks[abaId]();
     }
+    // Salvar aba ativa
+    try{ if(typeof GM_setValue !== 'undefined') GM_setValue('omega_aba_ativa', abaId); }catch(e){}
   };
 
   // ── Utilitários globais ─────────────────────────────────────────
@@ -291,8 +307,27 @@
       div.setAttribute('data-aba-content',id); div.style.display='none'; div.innerHTML=html;
       contentDiv.appendChild(div);
       if(onShow){if(!window._OmegaAbaCallbacks) window._OmegaAbaCallbacks={}; window._OmegaAbaCallbacks[id]=onShow;}
-      if(total===1) OmegaAba(id);
+      // Primeira aba OU aba memorizada
+      if(total===1){
+        var salva='';
+        try{ salva = (typeof GM_getValue !== 'undefined') ? GM_getValue('omega_aba_ativa','') : ''; }catch(e){}
+        // Se tem aba salva, nao ativa a primeira automaticamente (espera todas registrarem)
+        if(!salva) OmegaAba(id);
+      }
     },
+
+    // Chamado apos todas as abas serem registradas para restaurar a aba salva
+    restaurarAbaSalva: function(){
+      try{
+        var salva = (typeof GM_getValue !== 'undefined') ? GM_getValue('omega_aba_ativa','') : '';
+        if(salva){
+          var existe = document.querySelector('#omega-tabs button[data-aba="'+salva+'"]');
+          if(existe) OmegaAba(salva);
+          else OmegaAba(document.querySelector('#omega-tabs button').getAttribute('data-aba'));
+        }
+      }catch(e){}
+    },
+
     addSecao: function(html){ document.getElementById('omega-content').insertAdjacentHTML('beforeend', html); },
 
     getApiKey: function(){ return (typeof GM_getValue!=='undefined') ? GM_getValue('omega_api_key','') : localStorage.getItem('omega_api_key')||''; },
@@ -334,16 +369,11 @@
       el._omegaClicado=true; ST(function(){el._omegaClicado=false;},tempoMs||10000); return true;
     },
 
-    // ── Historico ────────────────────────────────────────────────
     HIST_KEY:'omega_historico', HIST_TTL:86400000,
-    carregarHistorico: function(){
-      try{var raw=(typeof GM_getValue!=='undefined')?GM_getValue(this.HIST_KEY,'[]'):localStorage.getItem(this.HIST_KEY)||'[]';var self=this;return JSON.parse(raw).filter(function(i){return(Date.now()-i.ts)<self.HIST_TTL;});}catch(e){return[];}
-    },
+    carregarHistorico: function(){try{var raw=(typeof GM_getValue!=='undefined')?GM_getValue(this.HIST_KEY,'[]'):localStorage.getItem(this.HIST_KEY)||'[]';var self=this;return JSON.parse(raw).filter(function(i){return(Date.now()-i.ts)<self.HIST_TTL;});}catch(e){return[];}},
     salvarHistorico: function(lista){var raw=JSON.stringify(lista);if(typeof GM_setValue!=='undefined')GM_setValue(this.HIST_KEY,raw);else localStorage.setItem(this.HIST_KEY,raw);},
     adicionarHistorico: function(dados){var lista=this.carregarHistorico().filter(function(i){return i.placa!==dados.placa;});lista.unshift({placa:dados.placa,renavam:dados.renavam,cpf:dados.cpf,nome:dados.nome,ts:Date.now()});this.salvarHistorico(lista);},
     tempoRelativo: function(ts){var d=Date.now()-ts,min=Math.floor(d/60000),hrs=Math.floor(d/3600000);return min<1?'agora':min<60?'ha '+min+'min':'ha '+hrs+'h';},
-
-    // ── Utilitarios diversos ─────────────────────────────────────
     parseCodigo: function(codigo){var dados={};codigo.split('|').forEach(function(par){var idx=par.indexOf('=');if(idx!==-1)dados[par.substring(0,idx).trim()]=par.substring(idx+1).trim();});return dados;},
     gerarEmail: function(){var c='abcdefghijklmnopqrstuvwxyz0123456789',s='';for(var i=0;i<12;i++)s+=c[Math.floor(Math.random()*c.length)];return s+'@yahoo.com';},
     CEPS:{MG:['32220-390','32017-900','32280-370'],SP:['04805-140','01002-900','08062-700'],RJ:['23032-486','20211-110','22793-620']},
@@ -352,12 +382,10 @@
 
   window.OmegaMatarTimers = function(){ window.OmegaUtils.matarTimers(); };
 
-  // ── Proteção contra reload ──────────────────────────────────────
   unsafeWindow.addEventListener('beforeunload', function(e){
     if(window._omegaAutomacaoAtiva){e.preventDefault();e.returnValue='';return'';}
   }, true);
 
-  // ── Minimizar/restaurar ─────────────────────────────────────────
   unsafeWindow.OmegaMinimizar = function(){
     var p=document.getElementById('antt-helper');
     var tabs=document.getElementById('omega-tabs'), cnt=document.getElementById('omega-content');
@@ -365,16 +393,10 @@
     var btn=document.getElementById('omega-minimizar');
     var min=p.getAttribute('data-minimizado')==='1';
     var els=[tabs,cnt,hr,rod];
-    if(min){
-      els.forEach(function(el){if(el)el.style.display='';});
-      p.style.width='440px'; p.setAttribute('data-minimizado','0'); if(btn) btn.textContent='—';
-    } else {
-      els.forEach(function(el){if(el)el.style.display='none';});
-      p.style.width='160px'; p.setAttribute('data-minimizado','1'); if(btn) btn.textContent='▢';
-    }
+    if(min){els.forEach(function(el){if(el)el.style.display='';});p.style.width='440px';p.setAttribute('data-minimizado','0');if(btn)btn.textContent='—';}
+    else{els.forEach(function(el){if(el)el.style.display='none';});p.style.width='160px';p.setAttribute('data-minimizado','1');if(btn)btn.textContent='▢';}
   };
 
-  // ── Configuracao API ────────────────────────────────────────────
   unsafeWindow.OmegaConfigAPI = function(){
     var atual=window.OmegaUtils.getApiKey();
     var nova=prompt('Cole sua chave da API Anthropic (sk-ant-...):',atual?'********':'');
