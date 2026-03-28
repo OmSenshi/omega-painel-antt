@@ -1,22 +1,68 @@
-// pages/cadastro.js — modulo: Cadastro e Movimentacao de Frota (v58 — tema dark)
+// pages/cadastro.js — modulo: Cadastro e Movimentacao de Frota (v59 — extracao direta)
 (function(){
   var U   = window.OmegaUtils;
   var jqR = unsafeWindow.jQuery || unsafeWindow.$;
+  var EX  = window.OmegaExtractor;
 
   function abaPortalAtiva(){ var t=document.querySelector('.nav-tabs .nav-link.active'); return t?t.getAttribute('href'):''; }
   function tipoPedido(){ var el=document.querySelector('.main_content'); return el?(el.getAttribute('data-tipo-pedido')||''):''; }
   function tipoCadastro(){ var c=document.getElementById('CpfCnpjTransportador'); if(!c||!c.value)return'CPF'; return c.value.replace(/\D/g,'').length===14?'CNPJ':'CPF'; }
 
+  // ── Funcao helper: criar dropzone compacto ──────────────────────
+  function htmlDropzone(id, label, sublabel){
+    return '<div id="'+id+'" class="om-dropzone" style="padding:10px;margin-bottom:6px">'
+      +'<div class="om-drop-txt" id="'+id+'-txt">'+label+'<br><span>'+(sublabel||'PDF ou imagem')+'</span></div>'
+      +'</div>'
+      +'<input type="file" id="'+id+'-file" accept=".pdf,image/*" style="display:none">';
+  }
+
+  function setupDropzone(zoneId, fileInputId, onFile){
+    var zone=document.getElementById(zoneId), fi=document.getElementById(fileInputId);
+    if(!zone||!fi) return;
+    zone.addEventListener('click', function(){ fi.click(); });
+    zone.addEventListener('dragover', function(e){ e.preventDefault(); zone.classList.add('om-dropzone-active'); });
+    zone.addEventListener('dragleave', function(){ zone.classList.remove('om-dropzone-active'); });
+    zone.addEventListener('drop', function(e){ e.preventDefault(); zone.classList.remove('om-dropzone-active'); if(e.dataTransfer.files[0]) onFile(e.dataTransfer.files[0]); });
+    fi.addEventListener('change', function(){ if(this.files[0]) onFile(this.files[0]); });
+  }
+
   // ── ABA: CADASTRO ───────────────────────────────────────────────
   U.registrarAba('cadastro', 'Cadastro', ''
+    // ── Importação via código ──
     +'<div class="om-flex om-mb">'
       +'<input id="omega-cad-import-input" class="om-input om-input-sm" placeholder="Cole o codigo OMEGA Cadastro aqui" style="flex:1">'
       +'<button type="button" id="omega-cad-import-btn" class="om-btn om-btn-coral om-btn-sm" style="white-space:nowrap">Importar</button>'
     +'</div>'
     +'<div id="omega-cad-import-status"></div>'
+
+    // ── Botões CPF / CNPJ (extração direta) ──
+    +'<div id="omega-cad-tipo-btns" class="om-grid om-grid-2 om-mb">'
+      +'<button type="button" id="omega-cad-btn-cpf" class="om-btn om-btn-blue">Cadastro CPF</button>'
+      +'<button type="button" id="omega-cad-btn-cnpj" class="om-btn om-btn-purple">Cadastro CNPJ</button>'
+    +'</div>'
+
+    // ── Zona de upload CPF ──
+    +'<div id="omega-cad-upload-cpf" style="display:none">'
+      +'<div class="om-badge">Cadastro CPF — Extracao</div>'
+      +htmlDropzone('omega-drop-cnh', 'CNH ou RG', 'Extrai identidade e UF')
+      +'<div id="omega-drop-cnh-status"></div>'
+      +htmlDropzone('omega-drop-endereco', 'Comprovante de Endereco', 'Extrai CEP, rua, numero, bairro')
+      +'<div id="omega-drop-endereco-status"></div>'
+    +'</div>'
+
+    // ── Zona de upload CNPJ ──
+    +'<div id="omega-cad-upload-cnpj" style="display:none">'
+      +'<div class="om-badge" style="background:linear-gradient(135deg,#6f42c1,#5a35a0)">Cadastro CNPJ — Extracao</div>'
+      +htmlDropzone('omega-drop-cnpj', 'Inscricao CNPJ / MEI / CCMEI', 'Extrai endereco, telefone, email')
+      +'<div id="omega-drop-cnpj-status"></div>'
+      +htmlDropzone('omega-drop-socio', 'CNH do Socio', 'Extrai CPF do socio')
+      +'<div id="omega-drop-socio-status"></div>'
+    +'</div>'
+
+    // ── Campos editáveis (compartilhados entre import e extração) ──
     +'<div id="omega-cad-campos" style="display:none">'
       +'<div id="omega-cad-tipo-badge" class="om-badge"></div>'
-      // Identidade
+      // Identidade (CPF)
       +'<div id="omega-cad-sec-id" style="display:none">'
         +'<div class="om-section-title">Identidade / CNH</div>'
         +'<div class="om-grid om-grid-21 om-mb-sm">'
@@ -37,7 +83,7 @@
           +'<div><label class="om-label">Complemento</label><input id="omega-cad-complemento" class="om-input" placeholder="Apto..."></div>'
         +'</div>'
       +'</div>'
-      // Contato
+      // Contato (CNPJ)
       +'<div id="omega-cad-sec-cont" style="display:none">'
         +'<div class="om-section-title">Contato</div>'
         +'<div class="om-grid om-grid-2 om-mb-sm">'
@@ -45,7 +91,7 @@
           +'<div><label class="om-label">Email</label><input id="omega-cad-email" class="om-input" placeholder="email@exemplo.com"></div>'
         +'</div>'
       +'</div>'
-      // Socio
+      // Socio (CNPJ)
       +'<div id="omega-cad-sec-soc" style="display:none">'
         +'<div class="om-section-title">Gestor / Socio</div>'
         +'<div class="om-mb-sm"><label class="om-label">CPF do Socio</label><input id="omega-cad-cpf-socio" class="om-input" placeholder="00000000000"></div>'
@@ -53,6 +99,7 @@
       +'<button type="button" id="omega-cad-iniciar-btn" class="om-btn om-btn-green om-btn-full" style="margin-top:4px">&#9654; Iniciar Automacao</button>'
       +'<div id="omega-cad-iniciar-status"></div>'
     +'</div>'
+
     // Acoes manuais
     +'<div id="omega-cad-acoes" style="display:none">'
       +'<hr class="om-hr">'
@@ -82,6 +129,164 @@
       +'</div>'
     +'</div>'
   , function(){ atualizarSecaoAcoes(); });
+
+  // ═══════════════════════════════════════════════════════════════
+  // EXTRACAO DIRETA VIA API (botoes CPF/CNPJ)
+  // ═══════════════════════════════════════════════════════════════
+
+  function mostrarCampos(tipo){
+    // Esconde botoes CPF/CNPJ e zonas de upload
+    document.getElementById('omega-cad-tipo-btns').style.display = 'none';
+    document.getElementById('omega-cad-upload-cpf').style.display = 'none';
+    document.getElementById('omega-cad-upload-cnpj').style.display = 'none';
+    // Mostra campos editaveis
+    document.getElementById('omega-cad-campos').style.display = 'block';
+    document.getElementById('omega-cad-tipo-badge').textContent = tipo==='CPF' ? 'Cadastro CPF' : 'Cadastro CNPJ';
+    document.getElementById('omega-cad-sec-id').style.display   = tipo==='CPF' ? 'block' : 'none';
+    document.getElementById('omega-cad-sec-cont').style.display = tipo==='CNPJ' ? 'block' : 'none';
+    document.getElementById('omega-cad-sec-soc').style.display  = tipo==='CNPJ' ? 'block' : 'none';
+    document.getElementById('omega-cad-sec-end').style.display  = 'block';
+  }
+
+  function set(id,val){ var el=document.getElementById(id); if(el) el.value=val||''; }
+
+  // ── Botão CPF ───────────────────────────────────────────────────
+  document.getElementById('omega-cad-btn-cpf').addEventListener('click', function(){
+    document.getElementById('omega-cad-tipo-btns').style.display = 'none';
+    document.getElementById('omega-cad-upload-cpf').style.display = 'block';
+  });
+
+  // Setup dropzones CPF
+  ST(function(){
+    // CNH/RG
+    setupDropzone('omega-drop-cnh', 'omega-drop-cnh-file', function(file){
+      var txt=document.getElementById('omega-drop-cnh-txt'), st=document.getElementById('omega-drop-cnh-status');
+      txt.innerHTML = file.name;
+      U.box(st, true, 'Extraindo identidade...');
+      EX.extrairCNH(file, function(dados){
+        set('omega-cad-identidade', dados.identidade || '000000');
+        set('omega-cad-uf', (dados.uf || '').toUpperCase());
+        U.box(st, true, 'Identidade: <b>'+(dados.identidade||'—')+'</b> | UF: <b>'+(dados.uf||'—')+'</b>');
+        // Se ambos documentos ja foram extraidos, mostra campos
+        verificarProntoCPF();
+      }, function(err){ U.box(st, false, err); });
+    });
+
+    // Comprovante de endereco
+    setupDropzone('omega-drop-endereco', 'omega-drop-endereco-file', function(file){
+      var txt=document.getElementById('omega-drop-endereco-txt'), st=document.getElementById('omega-drop-endereco-status');
+      txt.innerHTML = file.name;
+      U.box(st, true, 'Extraindo endereco...');
+      EX.extrairEndereco(file, function(dados){
+        var cep = (dados.cep||'').replace(/\D/g,'');
+        if(!cep) cep = U.cepAleatorio('MG').replace(/\D/g,'');
+        set('omega-cad-cep', cep);
+        set('omega-cad-logradouro', dados.logradouro || '0');
+        set('omega-cad-numero', dados.numero || '0');
+        set('omega-cad-bairro', dados.bairro || '0');
+        set('omega-cad-complemento', dados.complemento || '');
+        U.box(st, true, 'CEP: <b>'+cep+'</b> | Rua: <b>'+(dados.logradouro||'0')+'</b>');
+        verificarProntoCPF();
+      }, function(err){
+        // Fallback: endereco aleatorio MG
+        var cep = U.cepAleatorio('MG').replace(/\D/g,'');
+        set('omega-cad-cep', cep);
+        set('omega-cad-logradouro', '0');
+        set('omega-cad-numero', '0');
+        set('omega-cad-bairro', '0');
+        set('omega-cad-complemento', '');
+        U.box(st, false, err + '<br>Endereco MG aleatorio aplicado.');
+        verificarProntoCPF();
+      });
+    });
+  }, 100);
+
+  function verificarProntoCPF(){
+    // Se pelo menos a CNH foi processada, mostra os campos
+    var idVal = document.getElementById('omega-cad-identidade');
+    if(idVal && idVal.value){
+      mostrarCampos('CPF');
+      var importSt = document.getElementById('omega-cad-import-status');
+      U.box(importSt, true, 'Dados extraidos! Confira e clique em Iniciar.');
+    }
+  }
+
+  // ── Botão CNPJ ──────────────────────────────────────────────────
+  document.getElementById('omega-cad-btn-cnpj').addEventListener('click', function(){
+    document.getElementById('omega-cad-tipo-btns').style.display = 'none';
+    document.getElementById('omega-cad-upload-cnpj').style.display = 'block';
+  });
+
+  // Setup dropzones CNPJ
+  ST(function(){
+    // Inscricao CNPJ
+    setupDropzone('omega-drop-cnpj', 'omega-drop-cnpj-file', function(file){
+      var txt=document.getElementById('omega-drop-cnpj-txt'), st=document.getElementById('omega-drop-cnpj-status');
+      txt.innerHTML = file.name;
+      U.box(st, true, 'Extraindo dados do CNPJ...');
+      EX.extrairCNPJ(file, function(dados){
+        // Endereco
+        var cep = (dados.cep||'').replace(/\D/g,'');
+        if(!cep) cep = U.cepAleatorio('MG').replace(/\D/g,'');
+        set('omega-cad-cep', cep);
+        set('omega-cad-logradouro', dados.logradouro || '0');
+        set('omega-cad-numero', dados.numero || '0');
+        set('omega-cad-bairro', dados.bairro || '0');
+        set('omega-cad-complemento', dados.complemento || '');
+        // Contato — fallback para aleatorio se vazio
+        var tel = (dados.telefone||'').replace(/\D/g,'');
+        if(!tel) tel = '0000000000';
+        set('omega-cad-telefone', tel);
+        var email = (dados.email||'').trim();
+        if(!email) email = U.gerarEmail();
+        set('omega-cad-email', email);
+        var msgs = [];
+        msgs.push('CEP: <b>'+cep+'</b>');
+        msgs.push('Tel: <b>'+(tel==='0000000000'?'aleatorio':tel)+'</b>');
+        msgs.push('Email: <b>'+email+'</b>');
+        U.box(st, true, msgs.join(' | '));
+        verificarProntoCNPJ();
+      }, function(err){
+        // Fallback total
+        var cep = U.cepAleatorio('MG').replace(/\D/g,'');
+        set('omega-cad-cep', cep);
+        set('omega-cad-logradouro', '0');
+        set('omega-cad-numero', '0');
+        set('omega-cad-bairro', '0');
+        set('omega-cad-complemento', '');
+        set('omega-cad-telefone', '0000000000');
+        set('omega-cad-email', U.gerarEmail());
+        U.box(st, false, err + '<br>Dados aleatorios aplicados.');
+        verificarProntoCNPJ();
+      });
+    });
+
+    // CNH do socio
+    setupDropzone('omega-drop-socio', 'omega-drop-socio-file', function(file){
+      var txt=document.getElementById('omega-drop-socio-txt'), st=document.getElementById('omega-drop-socio-status');
+      txt.innerHTML = file.name;
+      U.box(st, true, 'Extraindo CPF do socio...');
+      EX.extrairCPFSocio(file, function(dados){
+        set('omega-cad-cpf-socio', (dados.cpf_socio||'').replace(/\D/g,''));
+        U.box(st, true, 'CPF Socio: <b>'+U.fCPF(dados.cpf_socio||'')+'</b>');
+        verificarProntoCNPJ();
+      }, function(err){ U.box(st, false, err); });
+    });
+  }, 100);
+
+  function verificarProntoCNPJ(){
+    // Se pelo menos o CNPJ foi processado, mostra campos
+    var cepVal = document.getElementById('omega-cad-cep');
+    if(cepVal && cepVal.value){
+      mostrarCampos('CNPJ');
+      var importSt = document.getElementById('omega-cad-import-status');
+      U.box(importSt, true, 'Dados extraidos! Confira e clique em Iniciar.');
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // IMPORTACAO VIA CODIGO (mantido)
+  // ═══════════════════════════════════════════════════════════════
 
   // ── Listeners abas do portal ────────────────────────────────────
   document.querySelectorAll('.nav-tabs .nav-link').forEach(function(link){
@@ -119,12 +324,11 @@
     var dados = U.parseCodigo(codigo);
     var tipo = (dados.tipo||'').toUpperCase();
     if(tipo!=='CPF'&&tipo!=='CNPJ') return U.box(st,false,'Codigo invalido.');
-    document.getElementById('omega-cad-tipo-badge').textContent = tipo==='CPF' ? 'Cadastro CPF' : 'Cadastro CNPJ';
-    document.getElementById('omega-cad-sec-id').style.display   = tipo==='CPF' ? 'block' : 'none';
-    document.getElementById('omega-cad-sec-cont').style.display = tipo==='CNPJ' ? 'block' : 'none';
-    document.getElementById('omega-cad-sec-soc').style.display  = tipo==='CNPJ' ? 'block' : 'none';
-    document.getElementById('omega-cad-sec-end').style.display  = 'block';
-    function set(id,val){ var el=document.getElementById(id); if(el) el.value=val||''; }
+    // Esconde botoes de tipo e zonas de upload
+    document.getElementById('omega-cad-tipo-btns').style.display = 'none';
+    document.getElementById('omega-cad-upload-cpf').style.display = 'none';
+    document.getElementById('omega-cad-upload-cnpj').style.display = 'none';
+    mostrarCampos(tipo);
     set('omega-cad-identidade', dados.identidade);
     set('omega-cad-uf',         (dados.uf||'').toUpperCase());
     set('omega-cad-cep',        (dados.cep||'').replace(/\D/g,''));
@@ -135,7 +339,6 @@
     set('omega-cad-telefone',   (dados.telefone||'').replace(/\D/g,''));
     set('omega-cad-email',      dados.email);
     set('omega-cad-cpf-socio',  (dados.cpf_socio||'').replace(/\D/g,''));
-    document.getElementById('omega-cad-campos').style.display='block';
     document.getElementById('omega-cad-import-input').value='';
     U.box(st,true,'Dados importados! Confira e clique em Iniciar.');
   }, true);
@@ -209,7 +412,7 @@
     },1200);
   }
 
-  // ═══════════════ FUNCOES ═══════════════
+  // ═══════════════ FUNCOES DE AUTOMACAO ═══════════════
   function preencherTransportadorCPF(identidade, uf, callback) {
     var ci=document.getElementById('TransportadorTac_Identidade')||document.querySelector('input[name="TransportadorTac.Identidade"]')||document.getElementById('Identidade');
     var co=document.getElementById('TransportadorTac_OrgaoEmissor')||document.querySelector('input[name="TransportadorTac.OrgaoEmissor"]')||document.getElementById('OrgaoEmissor');
@@ -223,8 +426,7 @@
   function preencherEndereco(cep,logradouro,numero,bairro,complemento,st,callback) {
     var btn=document.querySelector('button[data-action*="EnderecoPedido/Novo"]');
     if(!btn){U.box(st,false,'Botao Endereco nao encontrado.');callback();return;}
-    if(!U.guardClique(btn,10000)){callback();return;}
-    btn.click();
+    if(!U.guardClique(btn,10000)){callback();return;}btn.click();
     var cepFinal=(cep?cep:U.cepAleatorio('MG')).replace(/\D/g,'');
     var temDados=!!(cep&&logradouro&&logradouro!=='0');
     U.poll(function(){var c=document.getElementById('Cep'),ct=document.getElementById('CodigoTipoEndereco');return(c&&ct&&ct.options.length>1)?{c:c,ct:ct}:null;},
@@ -254,8 +456,7 @@
       if(n3){n3.value=temDados?(numero||'0'):'0';jqR(n3).trigger('input').trigger('change');}
       if(b3){b3.value=temDados?(bairro||'0'):'0';jqR(b3).trigger('input').trigger('change');}
       if(c3&&complemento&&temDados){c3.value=complemento;jqR(c3).trigger('input').trigger('change');}
-      ST(function(){
-        var cb=document.getElementById('MesmoEndereco');if(cb&&!cb.checked)U.marcarICheck(cb);
+      ST(function(){var cb=document.getElementById('MesmoEndereco');if(cb&&!cb.checked)U.marcarICheck(cb);
         ST(function(){var btnS=document.querySelector('.btn-salvar-endereco');if(btnS&&U.guardClique(btnS,5000))btnS.click();U.matarTimers();ST(callback,2000);},600);
       },500);
     },400);
