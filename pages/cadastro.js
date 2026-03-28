@@ -1,8 +1,11 @@
 // pages/cadastro.js — modulo: Cadastro e Movimentacao de Frota (v62)
 (function(){
+  console.log('[OMEGA][cadastro] v62 carregado');
   var U   = window.OmegaUtils;
   var jqR = unsafeWindow.jQuery || unsafeWindow.$;
   var EX  = window.OmegaExtractor;
+  if(!U) { console.error('[OMEGA][cadastro] OmegaUtils nao encontrado!'); return; }
+  if(!EX) { console.error('[OMEGA][cadastro] OmegaExtractor nao encontrado!'); }
 
   function abaPortalAtiva(){ var t=document.querySelector('.nav-tabs .nav-link.active'); return t?t.getAttribute('href'):''; }
   function tipoPedido(){ var el=document.querySelector('.main_content'); return el?(el.getAttribute('data-tipo-pedido')||''):''; }
