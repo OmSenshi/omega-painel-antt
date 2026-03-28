@@ -1,29 +1,12 @@
-// pages/cadastro.js — modulo: Cadastro e Movimentacao de Frota
+// pages/cadastro.js — modulo: Cadastro e Movimentacao de Frota (v57 — refatorado)
 (function(){
   var U   = window.OmegaUtils;
-  var jq  = window.OmegaJQ;
   var jqR = unsafeWindow.jQuery || unsafeWindow.$;
 
-  // Helper: setTimeout seguro (nao cancelado pelo OmegaMatarTimers)
-  function ST(fn, ms){ return window._setTimeoutNativo ? window._setTimeoutNativo(fn, ms) : setTimeout(fn, ms); }
-  // Helper: matar timers do portal e fechar toasts
-  function matarTimers(){
-    if(window.OmegaMatarTimers) window.OmegaMatarTimers();
-    // Fecha todos os toasts visiveis clicando no X
-    document.querySelectorAll('.toast-close-button').forEach(function(btn){ try{btn.click();}catch(e){} });
-  }
-
-  var CEPS = {
-    MG: ['32220-390','32017-900','32280-370'],
-    SP: ['04805-140','01002-900','08062-700'],
-    RJ: ['23032-486','20211-110','22793-620']
-  };
-
-  function cepAleatorio(e){ var l=CEPS[e]||CEPS.MG; return l[Math.floor(Math.random()*l.length)]; }
+  // ── Helpers locais (usam globals do core) ───────────────────────
   function abaPortalAtiva(){ var t=document.querySelector('.nav-tabs .nav-link.active'); return t?t.getAttribute('href'):''; }
   function tipoPedido(){ var el=document.querySelector('.main_content'); return el?(el.getAttribute('data-tipo-pedido')||''):''; }
   function tipoCadastro(){ var c=document.getElementById('CpfCnpjTransportador'); if(!c||!c.value)return'CPF'; return c.value.replace(/\D/g,'').length===14?'CNPJ':'CPF'; }
-  function gerarEmail(){ var c='abcdefghijklmnopqrstuvwxyz0123456789',s=''; for(var i=0;i<12;i++) s+=c[Math.floor(Math.random()*c.length)]; return s+'@yahoo.com'; }
 
   // ── ABA: CADASTRO ───────────────────────────────────────────────
   U.registrarAba('cadastro', 'Cadastro', ''
@@ -99,7 +82,7 @@
   // ── Listeners abas do portal ────────────────────────────────────
   document.querySelectorAll('.nav-tabs .nav-link').forEach(function(link){
     link.addEventListener('shown.bs.tab', atualizarSecaoAcoes);
-    link.addEventListener('click', function(){ setTimeout(atualizarSecaoAcoes, 300); });
+    link.addEventListener('click', function(){ ST(atualizarSecaoAcoes, 300); });
   });
 
   function atualizarSecaoAcoes() {
@@ -115,7 +98,7 @@
       wrapper.style.display='block'; cont.style.display='none'; rt.style.display='none'; veiculo.style.display='block';
       renderHistoricoVeiculo(); return;
     }
-    var algum=(aba==='#contatos'||aba==='#responsavelTecnico'||aba==='#veiculo');
+    var algum = (aba==='#contatos'||aba==='#responsavelTecnico'||aba==='#veiculo');
     wrapper.style.display = algum?'block':'none';
     cont.style.display    = aba==='#contatos'?'block':'none';
     rt.style.display      = aba==='#responsavelTecnico'?'block':'none';
@@ -129,19 +112,15 @@
     var codigo = document.getElementById('omega-cad-import-input').value.trim();
     var st     = document.getElementById('omega-cad-import-status');
     if(!codigo) return U.box(st, false, 'Cole o codigo gerado pelo Claude.');
-    var dados = {};
-    codigo.split('|').forEach(function(par){
-      var idx=par.indexOf('=');
-      if(idx!==-1) dados[par.substring(0,idx).trim()]=par.substring(idx+1).trim();
-    });
-    var tipo=(dados.tipo||'').toUpperCase();
+    var dados = U.parseCodigo(codigo);
+    var tipo = (dados.tipo||'').toUpperCase();
     if(tipo!=='CPF'&&tipo!=='CNPJ') return U.box(st,false,'Codigo invalido.');
-    document.getElementById('omega-cad-tipo-badge').textContent=tipo==='CPF'?'Cadastro CPF':'Cadastro CNPJ';
-    document.getElementById('omega-cad-sec-id').style.display   =tipo==='CPF' ?'block':'none';
-    document.getElementById('omega-cad-sec-cont').style.display =tipo==='CNPJ'?'block':'none';
-    document.getElementById('omega-cad-sec-soc').style.display  =tipo==='CNPJ'?'block':'none';
-    document.getElementById('omega-cad-sec-end').style.display  ='block';
-    function set(id,val){var el=document.getElementById(id);if(el)el.value=val||'';}
+    document.getElementById('omega-cad-tipo-badge').textContent = tipo==='CPF' ? 'Cadastro CPF' : 'Cadastro CNPJ';
+    document.getElementById('omega-cad-sec-id').style.display   = tipo==='CPF' ? 'block' : 'none';
+    document.getElementById('omega-cad-sec-cont').style.display = tipo==='CNPJ' ? 'block' : 'none';
+    document.getElementById('omega-cad-sec-soc').style.display  = tipo==='CNPJ' ? 'block' : 'none';
+    document.getElementById('omega-cad-sec-end').style.display  = 'block';
+    function set(id,val){ var el=document.getElementById(id); if(el) el.value=val||''; }
     set('omega-cad-identidade', dados.identidade);
     set('omega-cad-uf',         (dados.uf||'').toUpperCase());
     set('omega-cad-cep',        (dados.cep||'').replace(/\D/g,''));
@@ -160,23 +139,18 @@
   // ── Iniciar ─────────────────────────────────────────────────────
   document.getElementById('omega-cad-iniciar-btn').addEventListener('click', function(e){
     e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
-    var st=document.getElementById('omega-cad-iniciar-status');
-    if(this._omegaClicado) return false;
-    this._omegaClicado=true;
-    var self=this; ST(function(){self._omegaClicado=false;}, 60000);
-    var tipo=document.getElementById('omega-cad-tipo-badge').textContent.indexOf('CNPJ')!==-1?'CNPJ':'CPF';
+    var st = document.getElementById('omega-cad-iniciar-status');
+    if(!U.guardClique(this, 60000)) return false;
+    var tipo = document.getElementById('omega-cad-tipo-badge').textContent.indexOf('CNPJ')!==-1 ? 'CNPJ' : 'CPF';
     U.box(st,true,'Iniciando...');
-    window._omegaAutomacaoAtiva=true;
-    matarTimers();
+    window._omegaAutomacaoAtiva = true;
+    U.matarTimers();
     if(tipo==='CPF') iniciarCPF(st); else iniciarCNPJ(st);
     return false;
   }, true);
 
   // ════════════════════════════════════════════════════════════════
-  // AUTOMACAO CPF:
-  // 1) Transportador (Identidade + OrgaoEmissor=SSP + UF)
-  // 2) Endereco (COR + MesmoEndereco)
-  // 3) RT
+  // AUTOMACAO CPF
   // ════════════════════════════════════════════════════════════════
   function iniciarCPF(st) {
     var identidade  = document.getElementById('omega-cad-identidade').value.trim()||'000000';
@@ -190,7 +164,7 @@
     U.box(st,true,'1/2 — Transportador...');
     preencherTransportadorCPF(identidade, uf, function(){
       ST(function(){
-        matarTimers();
+        U.matarTimers();
         U.box(st,true,'2/2 — Endereco...');
         preencherEndereco(cep,logradouro,numero,bairro,complemento,st,function(){
           window._omegaAutomacaoAtiva=false;
@@ -201,13 +175,7 @@
   }
 
   // ════════════════════════════════════════════════════════════════
-  // AUTOMACAO CNPJ:
-  // 1) Capacidade financeira
-  // 2) Endereco (COR + MesmoEndereco)
-  // 3) Contato telefone
-  // 4) Contato email
-  // 5) Gestor/Socio
-  // 6) RT
+  // AUTOMACAO CNPJ
   // ════════════════════════════════════════════════════════════════
   function iniciarCNPJ(st) {
     var cep         = document.getElementById('omega-cad-cep').value.replace(/\D/g,'');
@@ -216,32 +184,32 @@
     var bairro      = document.getElementById('omega-cad-bairro').value.trim()||'0';
     var complemento = document.getElementById('omega-cad-complemento').value.trim();
     var telefone    = document.getElementById('omega-cad-telefone').value.replace(/\D/g,'')||'0000000000';
-    var email       = document.getElementById('omega-cad-email').value.trim()||gerarEmail();
+    var email       = document.getElementById('omega-cad-email').value.trim()||U.gerarEmail();
     var cpfSocio    = document.getElementById('omega-cad-cpf-socio').value.replace(/\D/g,'');
 
     U.box(st,true,'1/6 — Capacidade financeira...');
-    var cbCap=document.getElementById('TransportadorEtc_SituacaoCapacidadeFinanceira');
-    if(cbCap){try{jqR(cbCap).iCheck('check');}catch(e){} cbCap.checked=true; jqR(cbCap).trigger('ifChecked').trigger('change');}
+    var cbCap = document.getElementById('TransportadorEtc_SituacaoCapacidadeFinanceira');
+    if(cbCap){ U.marcarICheck(cbCap); }
 
     ST(function(){
-      matarTimers();
+      U.matarTimers();
       U.box(st,true,'2/6 — Endereco...');
       preencherEndereco(cep,logradouro,numero,bairro,complemento,st,function(){
         ST(function(){
-          matarTimers();
+          U.matarTimers();
           U.box(st,true,'3/6 — Telefone...');
           adicionarContato('2',telefone,function(){
             ST(function(){
-              matarTimers();
+              U.matarTimers();
               U.box(st,true,'4/6 — Email...');
               adicionarContato('4',email,function(){
                 ST(function(){
-                  matarTimers();
+                  U.matarTimers();
                   U.box(st,true,'5/6 — Gestor...');
                   if(cpfSocio){
                     adicionarGestor(cpfSocio,st,function(){
                       ST(function(){
-                        matarTimers();
+                        U.matarTimers();
                         U.box(st,true,'6/6 — RT...');
                         adicionarRT(st,function(){
                           window._omegaAutomacaoAtiva=false;
@@ -284,413 +252,326 @@
     callback();
   }
 
-  // ── Endereco (uma unica vez, COR + MesmoEndereco) ───────────────
+  // ── Endereco (COR + MesmoEndereco) ──────────────────────────────
   function preencherEndereco(cep,logradouro,numero,bairro,complemento,st,callback) {
-    var btn=document.querySelector('button[data-action*="EnderecoPedido/Novo"]');
+    var btn = document.querySelector('button[data-action*="EnderecoPedido/Novo"]');
     if(!btn){ U.box(st,false,'Botao Endereco nao encontrado.'); callback(); return; }
-    if(btn._omegaClicado){ callback(); return; }
-    btn._omegaClicado=true;
-    ST(function(){ btn._omegaClicado=false; }, 10000);
+    if(!U.guardClique(btn, 10000)){ callback(); return; }
     btn.click();
 
-    var cepFinal=(cep?cep:cepAleatorio('MG')).replace(/\D/g,'');
-    var temDados=!!(cep&&logradouro&&logradouro!=='0');
+    var cepFinal = (cep ? cep : U.cepAleatorio('MG')).replace(/\D/g,'');
+    var temDados = !!(cep && logradouro && logradouro!=='0');
 
-    // PASSO 1: polling modal completamente carregado (Cep E dropdown com options)
-    var tentModal=0;
-    function pollModal(){
-      tentModal++;
-      var campoCep=document.getElementById('Cep');
-      var ct=document.getElementById('CodigoTipoEndereco');
-      if(campoCep && ct && ct.options.length>1){
-        // Modal pronto — seleciona COR e confirma
-        ct.value='COR';
-        ct.selectedIndex=Array.from(ct.options).findIndex(function(o){return o.value==='COR';});
-        jqR(ct).trigger('change');
-        var tentConf=0;
-        function pollConfTipo(){
-          tentConf++;
-          var ctNow=document.getElementById('CodigoTipoEndereco');
-          if(ctNow&&ctNow.value==='COR'){
-            digitarCEP(document.getElementById('Cep'));
-          } else if(tentConf<10){
-            if(ctNow){ ctNow.value='COR'; jqR(ctNow).trigger('change'); }
-            ST(pollConfTipo,200);
-          } else {
-            digitarCEP(document.getElementById('Cep'));
-          }
-        }
-        ST(pollConfTipo,300);
-      } else if(tentModal<40){ ST(pollModal,200); }
-      else { U.box(st,false,'Modal de endereco nao abriu.'); callback(); }
-    }
-    pollModal();
-
-    function digitarCEP(campoCep){
-      if(!campoCep){ U.box(st,false,'Campo CEP nao encontrado.'); callback(); return; }
-      campoCep.value=''; campoCep.focus(); campoCep.dispatchEvent(new Event('focus',{bubbles:true}));
-      var i=0;
-      function proxChar(){
-        if(i>=cepFinal.length){
-          campoCep.dispatchEvent(new Event('input',{bubbles:true}));
-          campoCep.dispatchEvent(new Event('change',{bubbles:true}));
-          campoCep.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,key:'Tab',keyCode:9}));
-          campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:'Tab',keyCode:9}));
-          campoCep.dispatchEvent(new Event('blur',{bubbles:true}));
-          var l=document.getElementById('Logradouro');
-          if(l){l.focus(); ST(function(){l.blur();},100);}
-          // PASSO 4: polling logradouro
-          var tentLog=0;
-          function pollLog(){
-            tentLog++;
-            var l2=document.getElementById('Logradouro');
-            if((l2&&l2.value&&l2.value.trim()!=='')||tentLog>=20){
-              ST(function(){
-                var l3=document.getElementById('Logradouro'),n3=document.getElementById('Numero'),b3=document.getElementById('Bairro'),c3=document.getElementById('Complemento');
-                if(l3){l3.value=temDados?logradouro:'0'; jqR(l3).trigger('input').trigger('change');}
-                if(n3){n3.value=temDados?(numero||'0'):'0'; jqR(n3).trigger('input').trigger('change');}
-                if(b3){b3.value=temDados?(bairro||'0'):'0'; jqR(b3).trigger('input').trigger('change');}
-                if(c3&&complemento&&temDados){c3.value=complemento; jqR(c3).trigger('input').trigger('change');}
-                ST(function(){
-                  var cb=document.getElementById('MesmoEndereco');
-                  if(cb&&!cb.checked){ try{jqR(cb).iCheck('check');}catch(e){} cb.checked=true; jqR(cb).trigger('ifChecked').trigger('change'); }
-                  ST(function(){
-                    var btnS=document.querySelector('.btn-salvar-endereco');
-                    if(btnS&&!btnS._omegaClicado){
-                      btnS._omegaClicado=true; btnS.click();
-                      ST(function(){btnS._omegaClicado=false;},5000);
-                    }
-                    matarTimers();
-                    ST(callback,2000);
-                  },600);
-                },500);
-              },400);
-            } else { ST(pollLog,500); }
-          }
-          pollLog();
-          return;
-        }
-        var ch=cepFinal[i]; campoCep.value+=ch;
-        campoCep.dispatchEvent(new Event('input',{bubbles:true}));
-        campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
-        i++; ST(proxChar,100);
-      }
-      proxChar();
-    }
+    // Polling: modal completamente carregado
+    U.poll(
+      function(){
+        var campoCep = document.getElementById('Cep');
+        var ct = document.getElementById('CodigoTipoEndereco');
+        return (campoCep && ct && ct.options.length > 1) ? { campoCep:campoCep, ct:ct } : null;
+      },
+      function(r){
+        // Seleciona COR
+        r.ct.value = 'COR';
+        r.ct.selectedIndex = Array.from(r.ct.options).findIndex(function(o){ return o.value==='COR'; });
+        jqR(r.ct).trigger('change');
+        // Confirma tipo e digita CEP
+        U.poll(
+          function(){ var ct=document.getElementById('CodigoTipoEndereco'); return ct&&ct.value==='COR'; },
+          function(){ digitarCEPEndereco(document.getElementById('Cep'), cepFinal, temDados, logradouro, numero, bairro, complemento, st, callback); },
+          { maxTentativas:10, intervalo:200, onTimeout:function(){ digitarCEPEndereco(document.getElementById('Cep'), cepFinal, temDados, logradouro, numero, bairro, complemento, st, callback); } }
+        );
+      },
+      { maxTentativas:40, intervalo:200, onTimeout:function(){ U.box(st,false,'Modal de endereco nao abriu.'); callback(); } }
+    );
   }
 
-  // ── Contato (telefone OU email — chamado separadamente) ─────────
+  function digitarCEPEndereco(campoCep, cepFinal, temDados, logradouro, numero, bairro, complemento, st, callback) {
+    if(!campoCep){ U.box(st,false,'Campo CEP nao encontrado.'); callback(); return; }
+
+    U.digitarCharAChar(campoCep, cepFinal, {
+      delay: 100,
+      skipFinais: true, // CEP precisa de sequencia especial: input→change→Tab→blur
+      onDone: function(){
+        // Sequencia original que o portal espera
+        campoCep.dispatchEvent(new Event('input',{bubbles:true}));
+        campoCep.dispatchEvent(new Event('change',{bubbles:true}));
+        campoCep.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,key:'Tab',keyCode:9}));
+        campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:'Tab',keyCode:9}));
+        campoCep.dispatchEvent(new Event('blur',{bubbles:true}));
+        var l = document.getElementById('Logradouro');
+        if(l){ l.focus(); ST(function(){ l.blur(); },100); }
+
+        // Polling logradouro
+        U.poll(
+          function(){ var l2=document.getElementById('Logradouro'); return l2&&l2.value&&l2.value.trim()!==''; },
+          function(){ finalizarEndereco(temDados, logradouro, numero, bairro, complemento, st, callback); },
+          { maxTentativas:20, intervalo:500, onTimeout:function(){ finalizarEndereco(temDados, logradouro, numero, bairro, complemento, st, callback); } }
+        );
+      }
+    });
+  }
+
+  function finalizarEndereco(temDados, logradouro, numero, bairro, complemento, st, callback) {
+    ST(function(){
+      var l3=document.getElementById('Logradouro'), n3=document.getElementById('Numero'), b3=document.getElementById('Bairro'), c3=document.getElementById('Complemento');
+      if(l3){ l3.value=temDados?logradouro:'0'; jqR(l3).trigger('input').trigger('change'); }
+      if(n3){ n3.value=temDados?(numero||'0'):'0'; jqR(n3).trigger('input').trigger('change'); }
+      if(b3){ b3.value=temDados?(bairro||'0'):'0'; jqR(b3).trigger('input').trigger('change'); }
+      if(c3&&complemento&&temDados){ c3.value=complemento; jqR(c3).trigger('input').trigger('change'); }
+      ST(function(){
+        var cb=document.getElementById('MesmoEndereco');
+        if(cb&&!cb.checked) U.marcarICheck(cb);
+        ST(function(){
+          var btnS=document.querySelector('.btn-salvar-endereco');
+          if(btnS && U.guardClique(btnS, 5000)) btnS.click();
+          U.matarTimers();
+          ST(callback, 2000);
+        },600);
+      },500);
+    },400);
+  }
+
+  // ── Contato (telefone OU email) ─────────────────────────────────
   function adicionarContato(tipoVal,contatoVal,callback){
-    var btn=document.querySelector('button[data-action*="ContatoPedido/Novo"]');
+    var btn = document.querySelector('button[data-action*="ContatoPedido/Novo"]');
     if(!btn){ callback(false); return; }
-    if(btn._omegaClicado){ btn._omegaClicado=false; }
-    btn._omegaClicado=true;
-    ST(function(){btn._omegaClicado=false;},8000);
+    // Reset flag para permitir reuso
+    btn._omegaClicado = false;
+    if(!U.guardClique(btn, 8000)){ callback(false); return; }
     btn.click();
 
     ST(function(){
-      var t=document.getElementById('CodigoTipoContato');
+      var t = document.getElementById('CodigoTipoContato');
       if(!t){ callback(false); return; }
+      t.value = tipoVal;
+      jqR(t).trigger('change');
 
-      // Seleciona o tipo
-      t.value=tipoVal; jqR(t).trigger('change');
-
-      // Polling: aguarda dropdown confirmar o tipo correto antes de digitar
-      var tentTipo=0;
-      function pollTipoContato(){
-        tentTipo++;
-        var tAtual=document.getElementById('CodigoTipoContato');
-        if(tAtual&&tAtual.value===tipoVal){
-          // Tipo confirmado — aguarda campo Contato estar pronto
+      // Polling tipo confirmado
+      U.poll(
+        function(){ var tA=document.getElementById('CodigoTipoContato'); return tA&&tA.value===tipoVal; },
+        function(){
           ST(function(){
-            var c=document.getElementById('Contato');
+            var c = document.getElementById('Contato');
             if(!c){ callback(false); return; }
-            c.value=''; c.focus(); c.click();
-            c.dispatchEvent(new Event('focus',{bubbles:true}));
-            var chars=contatoVal.split(''),i=0;
-            function proxChar(){
-              if(i>=chars.length){
-                c=document.getElementById('Contato');
-                c.dispatchEvent(new Event('change',{bubbles:true}));
-                c.dispatchEvent(new Event('blur',{bubbles:true}));
+
+            U.digitarCharAChar(c, contatoVal, {
+              delay: 60,
+              onDone: function(){
                 ST(function(){
-                  c=document.getElementById('Contato');
+                  c = document.getElementById('Contato');
                   if(!c||!c.value||c.value.trim()===''){
-                    var btnFechar=document.querySelector('.modal.show .close, .modal.show [data-dismiss="modal"]');
-                    if(btnFechar) btnFechar.click();
-                    ST(function(){
-                      document.querySelectorAll('.modal-backdrop').forEach(function(el){el.remove();});
-                      document.body.classList.remove('modal-open');
-                    },300);
-                    callback(false); return;
+                    U.fecharModal();
+                    callback(false);
+                    return;
                   }
-                  var s=document.querySelector('.btn-salvar-contato');
-                  if(s&&!s._omegaClicado){
-                    s._omegaClicado=true; s.click();
-                    ST(function(){s._omegaClicado=false;},5000);
+                  var s = document.querySelector('.btn-salvar-contato');
+                  if(s && U.guardClique(s, 5000)){
+                    s.click();
                     ST(function(){
-                      var modalAberto=document.querySelector('.modal.show #manterContatoForm');
+                      var modalAberto = document.querySelector('.modal.show #manterContatoForm');
                       if(modalAberto){
-                        var btnFechar2=document.querySelector('.modal.show .close, .modal.show [data-dismiss="modal"]');
-                        if(btnFechar2) btnFechar2.click();
-                        ST(function(){
-                          document.querySelectorAll('.modal-backdrop').forEach(function(el){el.remove();});
-                          document.body.classList.remove('modal-open');
-                        },300);
+                        U.fecharModal();
                         callback(false);
                       } else {
-                        matarTimers();
-                        ST(function(){callback(true);},1500);
+                        U.matarTimers();
+                        ST(function(){ callback(true); }, 1500);
                       }
                     },1500);
                   } else if(!s) callback(false);
                 },600);
-                return;
               }
-              c=document.getElementById('Contato');
-              var ch=chars[i]; c.value+=ch;
-              c.dispatchEvent(new Event('input',{bubbles:true}));
-              c.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
-              i++; ST(proxChar,60);
-            }
-            proxChar();
+            });
           },400);
-        } else if(tentTipo<20){
-          // Tenta novamente selecionar e aguarda
-          if(tAtual){ tAtual.value=tipoVal; jqR(tAtual).trigger('change'); }
-          ST(pollTipoContato,300);
-        } else {
-          // Timeout — nao conseguiu selecionar tipo
-          callback(false);
+        },
+        {
+          maxTentativas: 20, intervalo: 300,
+          onTimeout: function(){ callback(false); }
         }
-      }
-      ST(pollTipoContato,300);
+      );
     },1200);
   }
 
   // ── Gestor/Socio ────────────────────────────────────────────────
   function adicionarGestor(cpfSocio,st,callback){
-    var cpfFmt=cpfSocio.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4');
-    var btn=document.querySelector('button[data-action*="GestorPedido/Novo"]');
+    var cpfFmt = cpfSocio.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4');
+    var btn = document.querySelector('button[data-action*="GestorPedido/Novo"]');
     if(!btn){ document.querySelectorAll('button').forEach(function(el){ if(!btn&&el.textContent.trim()==='Adicionar Gestor')btn=el; }); }
     if(!btn){ U.box(st,false,'Botao Gestor nao encontrado — adicione manualmente.'); callback(); return; }
-    if(btn._omegaClicado){ callback(); return; }
-    btn._omegaClicado=true;
-    ST(function(){btn._omegaClicado=false;},10000);
+    if(!U.guardClique(btn, 10000)){ callback(); return; }
     btn.click();
 
-    // PASSO 1: polling modal abrir (CpfCnpj presente)
-    var tentModal=0;
-    function pollModalGestor(){
-      tentModal++;
-      var campoCPF=document.getElementById('CpfCnpj');
-      var campoFunc=document.getElementById('CodigoTipoVinculo');
-      if(campoCPF){
-        // Seleciona Socio sem trigger (evita erro AjustaFormularioTipoFuncao)
-        if(campoFunc) campoFunc.value='1';
-        // PASSO 2: polling campo CPF estabilizar (nao disabled, nao readonly)
-        var tentCampo=0;
-        function pollCampoCPF(){
-          tentCampo++;
-          var c=document.getElementById('CpfCnpj');
-          if(c&&!c.disabled&&!c.readOnly){
-            // Confirma tipo vinculo
-            var cf=document.getElementById('CodigoTipoVinculo');
-            if(cf&&cf.value!=='1') cf.value='1';
-            c.value=''; c.focus(); c.click();
-            c.dispatchEvent(new Event('focus',{bubbles:true}));
-            ST(function(){ digitarCPFGestor(c); },200);
-          } else if(tentCampo<15){ ST(pollCampoCPF,200); }
-          else {
-            var c2=document.getElementById('CpfCnpj');
-            if(c2){ c2.value=''; c2.focus(); digitarCPFGestor(c2); }
-            else { U.box(st,false,'Campo CPF nao encontrado.'); callback(); }
-          }
-        }
-        ST(pollCampoCPF,300);
-      } else if(tentModal<30){ ST(pollModalGestor,200); }
-      else { U.box(st,false,'Modal Gestor nao abriu.'); callback(); }
-    }
-    pollModalGestor();
+    // Polling modal abrir
+    U.poll(
+      function(){ return document.getElementById('CpfCnpj'); },
+      function(campoCPF){
+        // Seleciona Socio SEM trigger (evita erro AjustaFormularioTipoFuncao)
+        var campoFunc = document.getElementById('CodigoTipoVinculo');
+        if(campoFunc) campoFunc.value = '1';
 
-    function digitarCPFGestor(campoCPF){
-      var chars=cpfFmt.split(''),i=0;
-      function proxChar(){
-        if(i>=chars.length){
-          campoCPF.dispatchEvent(new Event('change',{bubbles:true}));
-          campoCPF.dispatchEvent(new Event('blur',{bubbles:true}));
-          // PASSO 3: polling nome (aguarda AJAX do portal — matarTimers so apos nome carregar)
-          var tent=0;
-          function pollNomeGestor(){
-            tent++;
-            var nome=document.getElementById('Nome');
-            var btnS=document.querySelector('.btn-salvar-gestor');
-            if(nome&&nome.value&&nome.value.trim()!==''){
-              matarTimers();
-              var cb=document.getElementById('isDeclaracaoIdoneoArtigo2');
-              if(cb){ try{jqR(cb).iCheck('check');}catch(e){} cb.checked=true; jqR(cb).trigger('ifChecked').trigger('change'); }
-              ST(function(){
-                if(btnS&&!btnS._omegaClicado){
-                  btnS._omegaClicado=true; btnS.removeAttribute('disabled'); btnS.click();
-                  ST(function(){btnS._omegaClicado=false;},5000);
-                }
-                matarTimers();
-                ST(callback,2500);
-              },800);
-            } else if(tent>30){
-              U.box(st,false,'Portal nao carregou nome do gestor. Verifique o CPF.');
-              callback();
-            } else { ST(pollNomeGestor,600); }
-          }
-          pollNomeGestor();
-          return;
-        }
-        var ch=chars[i]; campoCPF.value+=ch;
-        campoCPF.dispatchEvent(new Event('input',{bubbles:true}));
-        campoCPF.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
-        i++; ST(proxChar,80);
-      }
-      proxChar();
-    }
+        // Polling campo CPF estabilizar
+        U.poll(
+          function(){ var c=document.getElementById('CpfCnpj'); return c&&!c.disabled&&!c.readOnly ? c : null; },
+          function(c){
+            var cf = document.getElementById('CodigoTipoVinculo');
+            if(cf&&cf.value!=='1') cf.value='1';
+
+            U.digitarCharAChar(c, cpfFmt, {
+              delay: 80,
+              onDone: function(){
+                // Polling nome carregado via AJAX
+                U.poll(
+                  function(){ var n=document.getElementById('Nome'); return n&&n.value&&n.value.trim()!==''; },
+                  function(){
+                    U.matarTimers();
+                    U.marcarICheck(document.getElementById('isDeclaracaoIdoneoArtigo2'));
+                    ST(function(){
+                      var btnS = document.querySelector('.btn-salvar-gestor');
+                      if(btnS && U.guardClique(btnS, 5000)){
+                        btnS.removeAttribute('disabled');
+                        btnS.click();
+                      }
+                      U.matarTimers();
+                      ST(callback, 2500);
+                    },800);
+                  },
+                  { maxTentativas:30, intervalo:600, onTimeout:function(){
+                    U.box(st,false,'Portal nao carregou nome do gestor. Verifique o CPF.');
+                    callback();
+                  }}
+                );
+              }
+            });
+          },
+          { maxTentativas:15, intervalo:200, onTimeout:function(){
+            // Fallback: tenta forcar
+            var c2 = document.getElementById('CpfCnpj');
+            if(c2){
+              U.digitarCharAChar(c2, cpfFmt, { delay:80, onDone:function(){ callback(); } });
+            } else { U.box(st,false,'Campo CPF nao encontrado.'); callback(); }
+          }}
+        );
+      },
+      { maxTentativas:30, intervalo:200, onTimeout:function(){ U.box(st,false,'Modal Gestor nao abriu.'); callback(); } }
+    );
   }
 
   // ── RT ───────────────────────────────────────────────────────────
-  var CPF_RT='071.417.536-64';
+  var CPF_RT = '071.417.536-64';
   function adicionarRT(st,callback){
-    var btn=document.querySelector('button[data-action*="ResponsavelTecnico/Criar"]');
+    var btn = document.querySelector('button[data-action*="ResponsavelTecnico/Criar"]');
     if(!btn){ document.querySelectorAll('button').forEach(function(el){ if(!btn&&el.textContent.trim()==='Adicionar Responsável Técnico')btn=el; }); }
     if(!btn){ callback(); return; }
-    if(btn._omegaClicado){ callback(); return; }
-    btn._omegaClicado=true;
-    ST(function(){btn._omegaClicado=false;},10000);
+    if(!U.guardClique(btn, 10000)){ callback(); return; }
     btn.click();
-    // Polling modal abrir (campo Cpf presente)
-    var tentModal=0;
-    function pollModalRT(){
-      tentModal++;
-      var cpf=document.getElementById('Cpf');
-      if(cpf){
-        cpf.value=CPF_RT; jqR(cpf).trigger('input').trigger('change').trigger('blur');
-        var tent=0;
-        function pollNomeRT(){
-          tent++;
-          var nome=document.getElementById('Nome'),btnS=document.getElementById('btnSalvar');
-          if((nome&&nome.value&&nome.value.trim()!=='')||tent>20){
-            if(!nome||!nome.value){ callback(); return; }
-            function marcarICheck(cb){ if(!cb)return; try{jqR(cb).iCheck('check');}catch(e){} cb.checked=true; jqR(cb).trigger('ifChecked').trigger('change'); }
-            marcarICheck(document.getElementById('FoiResponsavelTecnico'));
-            marcarICheck(document.getElementById('isDeclaracaoIdoneoArtigo2'));
+
+    U.poll(
+      function(){ return document.getElementById('Cpf'); },
+      function(cpf){
+        cpf.value = CPF_RT;
+        jqR(cpf).trigger('input').trigger('change').trigger('blur');
+
+        U.poll(
+          function(){ var n=document.getElementById('Nome'); return n&&n.value&&n.value.trim()!==''; },
+          function(){
+            U.marcarICheck(document.getElementById('FoiResponsavelTecnico'));
+            U.marcarICheck(document.getElementById('isDeclaracaoIdoneoArtigo2'));
             ST(function(){
-              if(btnS&&!btnS._omegaClicado){
-                btnS._omegaClicado=true; btnS.removeAttribute('disabled'); btnS.click();
-                ST(function(){btnS._omegaClicado=false;},5000);
+              var btnS = document.getElementById('btnSalvar');
+              if(btnS && U.guardClique(btnS, 5000)){
+                btnS.removeAttribute('disabled');
+                btnS.click();
               }
-              matarTimers();
-              ST(callback,2000);
+              U.matarTimers();
+              ST(callback, 2000);
             },800);
-          } else { ST(pollNomeRT,600); }
-        }
-        pollNomeRT();
-      } else if(tentModal<30){ ST(pollModalRT,200); }
-      else { callback(); }
-    }
-    pollModalRT();
+          },
+          { maxTentativas:20, intervalo:600, onTimeout:function(){ callback(); } }
+        );
+      },
+      { maxTentativas:30, intervalo:200, onTimeout:function(){ callback(); } }
+    );
   }
 
   // ── CEP manual (aba Acoes) ──────────────────────────────────────
   function preencherEnderecoManual(estado){
-    var st=document.getElementById('omega-cep-status'),cep=cepAleatorio(estado);
-    var btn=document.querySelector('button[data-action*="EnderecoPedido/Novo"]');
+    var st  = document.getElementById('omega-cep-status');
+    var cep = U.cepAleatorio(estado);
+    var btn = document.querySelector('button[data-action*="EnderecoPedido/Novo"]');
     if(!btn) return U.box(st,false,'Botao Endereco nao encontrado.');
-    if(btn._omegaClicado) return;
-    btn._omegaClicado=true; ST(function(){btn._omegaClicado=false;},10000);
-    U.box(st,true,'Abrindo formulario...'); btn.click();
-    var cepN=cep.replace(/\D/g,'');
+    if(!U.guardClique(btn, 10000)) return;
+    U.box(st,true,'Abrindo formulario...');
+    btn.click();
+    var cepN = cep.replace(/\D/g,'');
 
-    // Polling: aguarda modal abrir E dropdown ter options (completamente carregado)
-    var tentModal=0;
-    function pollModalManual(){
-      tentModal++;
-      var campoCep=document.getElementById('Cep');
-      var ct=document.getElementById('CodigoTipoEndereco');
-      // Exige tanto o campo Cep quanto o dropdown com options carregadas
-      if(campoCep && ct && ct.options.length>1){
-        // Modal completamente carregado — seleciona tipo COR
-        ct.value='COR';
-        ct.selectedIndex=Array.from(ct.options).findIndex(function(o){return o.value==='COR';});
-        jqR(ct).trigger('change');
-        // Confirma tipo antes de digitar
-        var tentConf=0;
-        function pollConfManual(){
-          tentConf++;
-          var ctNow=document.getElementById('CodigoTipoEndereco');
-          if(ctNow&&ctNow.value==='COR'){
-            digitarCEPManual(document.getElementById('Cep'));
-          } else if(tentConf<10){
-            if(ctNow){ctNow.value='COR';jqR(ctNow).trigger('change');}
-            ST(pollConfManual,200);
-          } else {
-            digitarCEPManual(document.getElementById('Cep'));
-          }
-        }
-        ST(pollConfManual,300);
-      } else if(tentModal<40){ ST(pollModalManual,200); }
-      else { U.box(st,false,'Modal nao abriu ou dropdown nao carregou.'); }
-    }
-    pollModalManual();
+    U.poll(
+      function(){
+        var campoCep=document.getElementById('Cep'), ct=document.getElementById('CodigoTipoEndereco');
+        return (campoCep&&ct&&ct.options.length>1) ? {campoCep:campoCep,ct:ct} : null;
+      },
+      function(r){
+        r.ct.value='COR';
+        r.ct.selectedIndex=Array.from(r.ct.options).findIndex(function(o){return o.value==='COR';});
+        jqR(r.ct).trigger('change');
 
-    function digitarCEPManual(campoCep){
-      if(!campoCep) return;
-      campoCep.value=''; campoCep.focus(); campoCep.dispatchEvent(new Event('focus',{bubbles:true}));
-      var i=0;
-      function proxChar(){
-        if(i>=cepN.length){
-          campoCep.dispatchEvent(new Event('input',{bubbles:true})); campoCep.dispatchEvent(new Event('change',{bubbles:true}));
-          campoCep.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,key:'Tab',keyCode:9})); campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:'Tab',keyCode:9}));
-          campoCep.dispatchEvent(new Event('blur',{bubbles:true}));
-          var l=document.getElementById('Logradouro'); if(l){l.focus();ST(function(){l.blur();},100);}
-          U.box(st,true,'CEP '+cep+' inserido...');
-          var tentLog=0;
-          function pollLogManual(){
-            tentLog++;
-            var l2=document.getElementById('Logradouro');
-            if((l2&&l2.value&&l2.value.trim()!=='')||tentLog>=20){
-              ST(function(){
-                var l3=document.getElementById('Logradouro'),n3=document.getElementById('Numero'),b3=document.getElementById('Bairro');
-                if(l3){l3.value='0';jqR(l3).trigger('input').trigger('change');}
-                if(n3){n3.value='0';jqR(n3).trigger('input').trigger('change');}
-                if(b3){b3.value='0';jqR(b3).trigger('input').trigger('change');}
-                ST(function(){
-                  var cb=document.getElementById('MesmoEndereco');
-                  if(cb&&!cb.checked){ try{jqR(cb).iCheck('check');}catch(e){} cb.checked=true; jqR(cb).trigger('ifChecked').trigger('change'); }
-                  ST(function(){
-                    var btnS=document.querySelector('.btn-salvar-endereco');
-                    if(btnS&&!btnS._omegaClicado){
-                      btnS._omegaClicado=true; btnS.click();
-                      U.box(st,true,'Endereco ('+estado+'/'+cep+') salvo!');
-                      ST(function(){btnS._omegaClicado=false;},5000);
-                    }
-                  },600);
-                },500);
-              },300);
-            } else { ST(pollLogManual,500); }
+        U.poll(
+          function(){ var ct=document.getElementById('CodigoTipoEndereco'); return ct&&ct.value==='COR'; },
+          function(){
+            var campoCep = document.getElementById('Cep');
+            U.digitarCharAChar(campoCep, cepN, {
+              delay: 80,
+              skipFinais: true,
+              onDone: function(){
+                campoCep.dispatchEvent(new Event('input',{bubbles:true}));
+                campoCep.dispatchEvent(new Event('change',{bubbles:true}));
+                campoCep.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,key:'Tab',keyCode:9}));
+                campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:'Tab',keyCode:9}));
+                campoCep.dispatchEvent(new Event('blur',{bubbles:true}));
+                var l=document.getElementById('Logradouro'); if(l){l.focus();ST(function(){l.blur();},100);}
+                U.box(st,true,'CEP '+cep+' inserido...');
+
+                U.poll(
+                  function(){ var l2=document.getElementById('Logradouro'); return l2&&l2.value&&l2.value.trim()!==''; },
+                  function(){ finalizarEnderecoManual(estado, cep, st); },
+                  { maxTentativas:20, intervalo:500, onTimeout:function(){ finalizarEnderecoManual(estado, cep, st); } }
+                );
+              }
+            });
+          },
+          { maxTentativas:10, intervalo:200, onTimeout:function(){
+            var campoCep=document.getElementById('Cep');
+            if(campoCep) U.digitarCharAChar(campoCep, cepN, { delay:80, onDone:function(){ finalizarEnderecoManual(estado,cep,st); } });
+          }}
+        );
+      },
+      { maxTentativas:40, intervalo:200, onTimeout:function(){ U.box(st,false,'Modal nao abriu ou dropdown nao carregou.'); } }
+    );
+  }
+
+  function finalizarEnderecoManual(estado, cep, st){
+    ST(function(){
+      var l3=document.getElementById('Logradouro'),n3=document.getElementById('Numero'),b3=document.getElementById('Bairro');
+      if(l3){l3.value='0';jqR(l3).trigger('input').trigger('change');}
+      if(n3){n3.value='0';jqR(n3).trigger('input').trigger('change');}
+      if(b3){b3.value='0';jqR(b3).trigger('input').trigger('change');}
+      ST(function(){
+        var cb=document.getElementById('MesmoEndereco');
+        if(cb&&!cb.checked) U.marcarICheck(cb);
+        ST(function(){
+          var btnS=document.querySelector('.btn-salvar-endereco');
+          if(btnS && U.guardClique(btnS, 5000)){
+            btnS.click();
+            U.box(st,true,'Endereco ('+estado+'/'+cep+') salvo!');
           }
-          pollLogManual();
-          return;
-        }
-        var ch=cepN[i]; campoCep.value+=ch;
-        campoCep.dispatchEvent(new Event('input',{bubbles:true})); campoCep.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
-        i++; ST(proxChar,80);
-      }
-      proxChar();
-    }
+        },600);
+      },500);
+    },300);
   }
 
   document.getElementById('omega-cep-mg').addEventListener('click',function(){preencherEnderecoManual('MG');});
   document.getElementById('omega-cep-sp').addEventListener('click',function(){preencherEnderecoManual('SP');});
   document.getElementById('omega-cep-rj').addEventListener('click',function(){preencherEnderecoManual('RJ');});
 
-  // ── Contato manual (aba Acoes) ──────────────────────────────────
+  // ── Contato manual ──────────────────────────────────────────────
   document.getElementById('omega-contato-btn').addEventListener('click',function(){
     var st=document.getElementById('omega-contato-status');
     if(tipoCadastro()==='CPF'){U.box(st,true,'CPF — contatos ja preenchidos pelo portal.');return;}
@@ -698,7 +579,7 @@
     adicionarContato('2','0000000000',function(ok){
       if(!ok){U.box(st,false,'Erro no telefone.');return;}
       ST(function(){
-        var email=gerarEmail();
+        var email = U.gerarEmail();
         adicionarContato('4',email,function(ok2){
           if(ok2) U.box(st,true,'Tel + email adicionados!<br><span style="font-size:10px">'+email+'</span>');
           else U.box(st,false,'Telefone ok, erro no email.');
@@ -707,156 +588,154 @@
     });
   });
 
-  // ── RT manual (aba Acoes) ───────────────────────────────────────
+  // ── RT manual ───────────────────────────────────────────────────
   document.getElementById('omega-rt-btn').addEventListener('click',function(){
     var st=document.getElementById('omega-rt-status');
     adicionarRT(st,function(){U.box(st,true,'RT adicionado! CPF: '+CPF_RT);});
   });
 
   // ── Historico de veiculos ───────────────────────────────────────
-  var HIST_KEY='omega_historico';
-  function carregarHistorico(){try{var raw=(typeof GM_getValue!=='undefined')?GM_getValue(HIST_KEY,'[]'):localStorage.getItem(HIST_KEY)||'[]';return JSON.parse(raw).filter(function(i){return(Date.now()-i.ts)<86400000;});}catch(e){return[];}}
-
   function renderHistoricoVeiculo(){
-    var lista=carregarHistorico(),el=document.getElementById('omega-veiculo-hist'),vazio=document.getElementById('omega-veiculo-vazio');
+    var lista=U.carregarHistorico(), el=document.getElementById('omega-veiculo-hist'), vazio=document.getElementById('omega-veiculo-vazio');
     if(!el)return;
     if(lista.length===0){el.innerHTML='';if(vazio)vazio.style.display='block';return;}
     if(vazio)vazio.style.display='none';
     el.innerHTML=lista.map(function(item,idx){
-      var p=item.placa||'',display=/^[A-Z]{3}[0-9]{4}$/.test(p)?p.substring(0,3)+'-'+p.substring(3):p;
-      return'<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0f0f0"><div style="font-size:12px;font-weight:bold;color:#333">'+display+'</div><button onclick="OmegaUsarVeiculoCad('+idx+')" style="padding:4px 9px;background:#1a73e8;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer">Usar</button></div>';
+      return'<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0f0f0">'
+        +'<div style="font-size:12px;font-weight:bold;color:#333">'+U.formatarPlaca(item.placa||'')+'</div>'
+        +'<button onclick="OmegaUsarVeiculoCad('+idx+')" style="padding:4px 9px;background:#1a73e8;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer">Usar</button>'
+      +'</div>';
     }).join('');
   }
 
   function monitorarPopupsVeiculo(st,callback){
-    var tent=0;
-    function poll(){
-      tent++;
-      var bbSim=document.querySelector('.bootbox-confirm button[data-bb-handler="confirm"]');
-      if(bbSim&&bbSim.offsetParent!==null){
+    U.poll(
+      function(){
+        var bbSim=document.querySelector('.bootbox-confirm button[data-bb-handler="confirm"]');
+        if(bbSim&&bbSim.offsetParent!==null) return {tipo:'bootbox', btn:bbSim};
+        var chassi=document.getElementById('Chassi');
+        if(chassi&&chassi.value&&chassi.value.trim()!=='') return {tipo:'chassi'};
+        return null;
+      },
+      function(r){
+        if(r.tipo==='chassi'){ callback(); return; }
         U.box(st,true,'Popup! Confirmando em 3s...');
         ST(function(){
-          bbSim.click();
+          r.btn.click();
           ST(function(){
-            var t2=0;
-            function poll2(){
-              t2++;
-              var modal=document.getElementById('manterVeiculoModal'),titulo=modal?modal.querySelector('.modal-title'):null;
-              var ehMov=titulo&&titulo.textContent.indexOf('Movimenta')!==-1;
-              var vis=modal&&(modal.style.display==='block'||modal.classList.contains('show'));
-              var btnEx=document.querySelector('.btn-confirmar-exclusao');
-              if(ehMov&&vis&&btnEx){
-                ST(function(){btnEx.click();ST(function(){var btnInc=document.querySelector('.btn-confirmar-inclusao');if(btnInc)btnInc.click();ST(callback,1500);},1500);},500);
-              } else if(t2>=15){ callback(); }
-              else { ST(poll2,300); }
-            }
-            poll2();
+            U.poll(
+              function(){
+                var modal=document.getElementById('manterVeiculoModal'), titulo=modal?modal.querySelector('.modal-title'):null;
+                var ehMov=titulo&&titulo.textContent.indexOf('Movimenta')!==-1;
+                var vis=modal&&(modal.style.display==='block'||modal.classList.contains('show'));
+                var btnEx=document.querySelector('.btn-confirmar-exclusao');
+                return (ehMov&&vis&&btnEx) ? btnEx : null;
+              },
+              function(btnEx){
+                ST(function(){
+                  btnEx.click();
+                  ST(function(){
+                    var btnInc=document.querySelector('.btn-confirmar-inclusao');
+                    if(btnInc) btnInc.click();
+                    ST(callback, 1500);
+                  },1500);
+                },500);
+              },
+              { maxTentativas:15, intervalo:300, onTimeout:callback }
+            );
           },1500);
         },3000);
-        return;
-      }
-      var chassi=document.getElementById('Chassi');
-      if(chassi&&chassi.value&&chassi.value.trim()!==''){ callback(); return; }
-      if(tent>=20){ callback(); return; }
-      ST(poll,300);
-    }
-    poll();
+      },
+      { maxTentativas:20, intervalo:300, onTimeout:callback }
+    );
   }
 
-  unsafeWindow.OmegaUsarVeiculoCad=function(idx){
-    var st=document.getElementById('omega-veiculo-status'),lista=carregarHistorico(),item=lista[idx];
-    if(!item)return U.box(st,false,'Item nao encontrado.');
+  unsafeWindow.OmegaUsarVeiculoCad = function(idx){
+    var st=document.getElementById('omega-veiculo-status'), lista=U.carregarHistorico(), item=lista[idx];
+    if(!item) return U.box(st,false,'Item nao encontrado.');
 
-    // Guard contra duplo clique no botão Usar
     if(unsafeWindow._omegaVeiculoEmAndamento){
       U.box(st,false,'Aguarde — ja ha um veiculo em andamento.');
       return;
     }
-    unsafeWindow._omegaVeiculoEmAndamento=true;
-    var _liberarGuard=function(){ unsafeWindow._omegaVeiculoEmAndamento=false; };
+    unsafeWindow._omegaVeiculoEmAndamento = true;
+    var liberarGuard = function(){ unsafeWindow._omegaVeiculoEmAndamento=false; };
 
-    var isMovimentacao=document.querySelector('[data-tipo-pedido="MovimentacaoFrota"]')!==null;
-    var modal=document.getElementById('manterVeiculoModal'),popupAberto=modal&&(modal.style.display==='block'||modal.classList.contains('show'));
-    var tituloModal=modal?modal.querySelector('.modal-title'):null,ehPopupVeiculo=tituloModal&&tituloModal.textContent.indexOf('Dados do Ve')!==-1;
+    var isMovimentacao = document.querySelector('[data-tipo-pedido="MovimentacaoFrota"]')!==null;
+    var modal = document.getElementById('manterVeiculoModal');
+    var popupAberto = modal&&(modal.style.display==='block'||modal.classList.contains('show'));
+    var tituloModal = modal?modal.querySelector('.modal-title'):null;
+    var ehPopupVeiculo = tituloModal&&tituloModal.textContent.indexOf('Dados do Ve')!==-1;
 
     function preencher(){
-      // Polling ate o modal estar VISIVEL e campos prontos para interacao
-      var tentModal=0;
-      function aguardarModal(){
-        tentModal++;
-        var modal=document.getElementById('manterVeiculoModal');
-        var modalVisivel=modal&&(modal.style.display==='block'||modal.classList.contains('show'));
-        var campoPlaca=document.getElementById('Placa');
-        var campoRenavam=document.getElementById('Renavam');
-        if(modalVisivel&&campoPlaca&&campoRenavam){
+      U.poll(
+        function(){
+          var m=document.getElementById('manterVeiculoModal');
+          var vis=m&&(m.style.display==='block'||m.classList.contains('show'));
+          var p=document.getElementById('Placa'), r=document.getElementById('Renavam');
+          return (vis&&p&&r) ? {placa:p, renavam:r} : null;
+        },
+        function(campos){
           U.box(st,true,'Modal aberto. Preenchendo...');
-          preencherCampos(campoPlaca,campoRenavam);
-        } else if(tentModal<40){
-          ST(aguardarModal,200);
-        } else {
-          _liberarGuard();
-          U.box(st,false,'Modal do veiculo nao abriu.');
-        }
-      }
-      aguardarModal();
+          preencherCamposVeiculo(campos.placa, campos.renavam, item, st, liberarGuard);
+        },
+        { maxTentativas:40, intervalo:200, onTimeout:function(){ liberarGuard(); U.box(st,false,'Modal do veiculo nao abriu.'); } }
+      );
     }
 
-    function preencherCampos(campoPlaca,campoRenavam){
-      var btnVerificar=document.getElementById('verificar');
-      var placaVal=(item.placa||'').replace(/[^A-Z0-9]/gi,'').toUpperCase();
-      campoPlaca.removeAttribute('disabled');campoPlaca.value='';campoPlaca.focus();campoPlaca.dispatchEvent(new Event('focus',{bubbles:true}));
-      var i=0;
-      function proxChar(){
-        if(i>=placaVal.length){
-          campoPlaca.dispatchEvent(new Event('change',{bubbles:true}));campoPlaca.dispatchEvent(new Event('blur',{bubbles:true}));
-          setTimeout(function(){
-            campoRenavam.removeAttribute('disabled');campoRenavam.value=item.renavam||'';
-            campoRenavam.dispatchEvent(new Event('input',{bubbles:true}));campoRenavam.dispatchEvent(new Event('change',{bubbles:true}));campoRenavam.dispatchEvent(new Event('blur',{bubbles:true}));
-            setTimeout(function(){
-              // Clica verificar apenas uma vez usando flag
-              if(btnVerificar&&!btnVerificar._omegaClicado){
-                btnVerificar._omegaClicado=true;
+    function preencherCamposVeiculo(campoPlaca, campoRenavam, item, st, liberarGuard){
+      var jq = window.OmegaJQ;
+      var btnVerificar = document.getElementById('verificar');
+      var placaVal = (item.placa||'').replace(/[^A-Z0-9]/gi,'').toUpperCase();
+      campoPlaca.removeAttribute('disabled');
+
+      U.digitarCharAChar(campoPlaca, placaVal, {
+        delay: 80,
+        delayEspecial: {4: 150},
+        onDone: function(){
+          ST(function(){
+            campoRenavam.removeAttribute('disabled');
+            campoRenavam.value = item.renavam||'';
+            campoRenavam.dispatchEvent(new Event('input',{bubbles:true}));
+            campoRenavam.dispatchEvent(new Event('change',{bubbles:true}));
+            campoRenavam.dispatchEvent(new Event('blur',{bubbles:true}));
+            ST(function(){
+              if(btnVerificar && U.guardClique(btnVerificar, 3000)){
                 jq.ajax({type:'GET',url:'/Veiculo/BuscarVeiculo',cache:false,data:{placa:campoPlaca.value.toUpperCase(),renavam:campoRenavam.value},
-                  success:function(){setTimeout(function(){btnVerificar.click();setTimeout(function(){btnVerificar._omegaClicado=false;},3000);},500);},
-                  error:function(){setTimeout(function(){btnVerificar.click();setTimeout(function(){btnVerificar._omegaClicado=false;},3000);},500);}
+                  success:function(){ ST(function(){ btnVerificar.click(); },500); },
+                  error:function(){ ST(function(){ btnVerificar.click(); },500); }
                 });
               }
               monitorarPopupsVeiculo(st,function(){
                 var tara=document.getElementById('Tara');
                 if(tara&&(!tara.value||tara.value==='')){tara.removeAttribute('disabled');tara.value='2';jq(tara).trigger('input').trigger('change');}
-                setTimeout(function(){
+                ST(function(){
                   var btnS=document.querySelector('.btn-salvar-veiculo')||document.querySelector('.btn-confirmar-inclusao');
-                  if(btnS&&!btnS._omegaClicado){
-                    btnS._omegaClicado=true;
-                    btnS.removeAttribute('disabled');btnS.click();
+                  if(btnS && U.guardClique(btnS, 5000)){
+                    btnS.removeAttribute('disabled');
+                    btnS.click();
                     U.box(st,true,'Veiculo salvo! Placa: <b>'+campoPlaca.value+'</b>');
-                    setTimeout(function(){btnS._omegaClicado=false;},5000);
                   } else if(!btnS){
                     U.box(st,false,'Botao Salvar nao encontrado.');
                   }
-                  _liberarGuard();
+                  liberarGuard();
                 },800);
               });
             },400);
           },300);
-          return;
         }
-        var ch=placaVal[i];campoPlaca.value=placaVal.substring(0,i+1);
-        campoPlaca.dispatchEvent(new Event('input',{bubbles:true}));campoPlaca.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,key:ch}));
-        i++;setTimeout(proxChar,i===4?150:80);
-      }
-      proxChar();
+      });
     }
 
-    if(isMovimentacao&&popupAberto&&ehPopupVeiculo){U.box(st,true,'Preenchendo...');preencher();}
-    else{
-      var btnAdd=document.querySelector('[data-action*="VeiculoPedido/Novo"]');
-      if(!btnAdd){_liberarGuard();return U.box(st,false,'Botao Adicionar Veiculo nao encontrado.');}
-      if(btnAdd._omegaClicado){_liberarGuard();return;}
-      btnAdd._omegaClicado=true;
-      setTimeout(function(){btnAdd._omegaClicado=false;},10000);
+    if(isMovimentacao&&popupAberto&&ehPopupVeiculo){
+      U.box(st,true,'Preenchendo...');
+      preencher();
+    } else {
+      var btnAdd = document.querySelector('[data-action*="VeiculoPedido/Novo"]');
+      if(!btnAdd){ liberarGuard(); return U.box(st,false,'Botao Adicionar Veiculo nao encontrado.'); }
+      if(!U.guardClique(btnAdd, 10000)){ liberarGuard(); return; }
       btnAdd.click();
-      preencher(); // polling cuida de esperar o modal
+      preencher();
     }
   };
 
