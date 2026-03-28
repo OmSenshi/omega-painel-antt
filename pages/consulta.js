@@ -1,11 +1,10 @@
-// pages/consulta.js — modulo: Emissao de Certificado e Extrato
+// pages/consulta.js — modulo: Emissao de Certificado e Extrato (v57 — refatorado)
 (function(){
   var U   = window.OmegaUtils;
   var jqR = unsafeWindow.jQuery || unsafeWindow.$;
 
   var naPaginaConsulta = !!document.getElementById('CpfCnpjTransportadorCertificado');
 
-  // Conteudo inicial com loading
   U.registrarAba('emissao', 'Emissao', ''
     +'<div style="font-size:10px;font-weight:bold;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">CPF / CNPJ</div>'
     +'<div id="omega-em-sel-wrapper"><div style="font-size:11px;color:#aaa;text-align:center;padding:8px 0">Carregando...</div></div>'
@@ -15,7 +14,6 @@
       +'<button type="button" id="omega-em-ext"  style="padding:9px;background:#1a73e8;color:#fff;border:none;border-radius:7px;font-size:12px;cursor:pointer;font-weight:bold">&#x1F4C4; Extrato</button>'
     +'</div>'
   , function(){
-    // Chamado quando aba e aberta
     if(window._omegaEmissaoErroMsg){
       var wrapper = document.getElementById('omega-em-sel-wrapper');
       if(wrapper){ wrapper.innerHTML = window._omegaEmissaoErroMsg; window._omegaEmissaoErroMsg = null; }
@@ -26,14 +24,21 @@
 
   var _urlCert = null;
   var _urlExt  = null;
-
-  // ── Popula dropdown ─────────────────────────────────────────────
   var _opcoesCached = null;
 
+  // ── Extrai opcoes de um elemento select ─────────────────────────
+  function extrairOpcoes(selElement){
+    if(!selElement) return [];
+    return Array.from(selElement.options).filter(function(o){ return o.value !== ''; }).map(function(o){
+      return { valor: o.value, texto: o.text.trim(), rntrc: o.getAttribute('data-rntrc') || '' };
+    });
+  }
+
+  // ── Popula dropdown ─────────────────────────────────────────────
   function popularDropdown(opcoes){
     _opcoesCached = opcoes;
     var wrapper = document.getElementById('omega-em-sel-wrapper');
-    if(!wrapper) return; // sera chamado novamente quando a aba abrir
+    if(!wrapper) return;
     _renderDropdown(opcoes);
   }
 
@@ -47,41 +52,33 @@
     var opts = '<option value="">Selecione...</option>';
     opcoes.forEach(function(o){
       var label = o.texto + (o.rntrc ? ' — RNTRC: '+o.rntrc : '');
-      opts += '<option value="'+o.valor+'" data-rntrc="'+o.rntrc+'">'+label+'</option>';
+      opts += '<option value="'+o.valor+'" data-rntrc="'+(o.rntrc||'')+'">'+label+'</option>';
     });
     wrapper.innerHTML = '<select id="omega-em-sel" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:7px;font-size:11px;box-sizing:border-box;margin-bottom:8px">'+opts+'</select>';
     document.getElementById('omega-em-sel').addEventListener('change', onSelectChange);
   }
 
-  // ── Carrega opcoes — da pagina atual ou via fetch ────────────────
+  // ── Carrega opcoes ──────────────────────────────────────────────
   if(naPaginaConsulta){
-    // Ja esta na pagina de consulta — le direto
-    var sel = document.getElementById('CpfCnpjTransportadorCertificado');
-    var opcoes = Array.from(sel.options).filter(function(o){ return o.value !== ''; }).map(function(o){
-      return { valor: o.value, texto: o.text.trim(), rntrc: o.getAttribute('data-rntrc') || '' };
-    });
-    popularDropdown(opcoes);
+    popularDropdown(extrairOpcoes(document.getElementById('CpfCnpjTransportadorCertificado')));
   } else {
-    // Outras paginas — faz fetch silencioso de /Transportador/Consultar
     unsafeWindow.fetch('/Transportador/Consultar')
-      .then(function(r){ return r.text(); })
+      .then(function(r){
+        if(!r.ok) throw new Error('HTTP '+r.status);
+        return r.text();
+      })
       .then(function(html){
         var div = document.createElement('div');
         div.innerHTML = html;
-        var selRemoto = div.querySelector('#CpfCnpjTransportadorCertificado');
-        if(!selRemoto){ popularDropdown([]); return; }
-        var opcoes = Array.from(selRemoto.options).filter(function(o){ return o.value !== ''; }).map(function(o){
-          return { valor: o.value, texto: o.text.trim(), rntrc: o.getAttribute('data-rntrc') || '' };
-        });
-        popularDropdown(opcoes);
+        popularDropdown(extrairOpcoes(div.querySelector('#CpfCnpjTransportadorCertificado')));
       })
       .catch(function(e){
         console.log('[OMEGA] fetch erro:', e);
-        _opcoesCached = []; // marca como carregado mas vazio
-        var wrapper = document.getElementById('omega-em-sel-wrapper');
+        _opcoesCached = [];
         var msg = '<div style="font-size:11px;color:#c0392b;text-align:center;padding:8px 0">Erro ao carregar. <a href="/Transportador/Consultar" style="color:#1a73e8">Abrir pagina de emissao</a></div>';
+        var wrapper = document.getElementById('omega-em-sel-wrapper');
         if(wrapper) wrapper.innerHTML = msg;
-        else if(!window._omegaEmissaoErroMsg) window._omegaEmissaoErroMsg = msg;
+        else window._omegaEmissaoErroMsg = msg;
       });
   }
 
@@ -136,7 +133,6 @@
         if(_urlCert) _urlCert = _urlCert.replace(/filename=[^&]+/, 'filename=Carteirinha'+sufixo+'.pdf');
         if(_urlExt)  _urlExt  = _urlExt.replace(/filename=[^&]+/,  'filename=Extrato'+sufixo+'.pdf');
 
-        // Atualiza resultado na pagina de consulta (se estiver nela)
         var resultadoEl = document.getElementById('ConsutarTransportador');
         if(resultadoEl) resultadoEl.innerHTML = html;
 
