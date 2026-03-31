@@ -1,6 +1,6 @@
-// pages/cadastro.js — modulo: Cadastro e Movimentacao de Frota (v62)
+// pages/cadastro.js — modulo: Cadastro e Movimentacao de Frota (v63 — pente fino)
 (function(){
-  console.log('[OMEGA][cadastro] v62 carregado');
+  console.log('[OMEGA][cadastro] v63 carregado');
   var U   = window.OmegaUtils;
   var jqR = unsafeWindow.jQuery || unsafeWindow.$;
   var EX  = window.OmegaExtractor;
@@ -26,16 +26,30 @@
   function set(id,val){var el=document.getElementById(id);if(el)el.value=val||'';}
   function val(id){var el=document.getElementById(id);return el?el.value.trim():'';}
 
+  // Helper: selecionar dropdown de forma robusta (selectedIndex + value + trigger)
+  function selecionarDropdown(selectEl, valor){
+    if(!selectEl)return;
+    for(var i=0;i<selectEl.options.length;i++){
+      if(selectEl.options[i].value===valor){selectEl.selectedIndex=i;break;}
+    }
+    selectEl.value=valor;
+    jqR(selectEl).trigger('change');
+  }
+
+  // Helper: parar automacao com erro
+  function pararAutomacao(st,msg){
+    window._omegaAutomacaoAtiva=false;
+    U.box(st,false,msg);
+  }
+
   // ── ABA: CADASTRO ───────────────────────────────────────────────
   U.registrarAba('cadastro', 'Cadastro', ''
-    // Import via codigo
     +'<div class="om-flex om-mb">'
       +'<input id="omega-cad-import-input" class="om-input om-input-sm" placeholder="Cole o codigo OMEGA Cadastro aqui" style="flex:1">'
       +'<button type="button" id="omega-cad-import-btn" class="om-btn om-btn-coral om-btn-sm" style="white-space:nowrap">Importar</button>'
     +'</div>'
     +'<div id="omega-cad-import-status"></div>'
 
-    // Botoes CPF / CNPJ
     +'<div id="omega-cad-tipo-btns" class="om-grid om-grid-2 om-mb">'
       +'<button type="button" id="omega-cad-btn-cpf" class="om-btn om-btn-blue">Cadastro CPF</button>'
       +'<button type="button" id="omega-cad-btn-cnpj" class="om-btn om-btn-purple">Cadastro CNPJ</button>'
@@ -46,7 +60,6 @@
       +'<button type="button" id="omega-cad-voltar-cpf" class="om-btn-list" style="color:#5a9cf5;background:none;border:none;padding:2px 0;margin-bottom:8px;font-size:11px;cursor:pointer">&#8592; Voltar</button>'
       +'<div class="om-badge">Cadastro CPF</div>'
 
-      // Drop CNH + campos identidade
       +htmlDrop('omega-drop-cnh','Arraste a CNH ou RG aqui','Preenche identidade e UF automaticamente')
       +'<div id="omega-drop-cnh-status"></div>'
       +'<div class="om-section-title">Identidade / CNH</div>'
@@ -55,7 +68,6 @@
         +'<div><label class="om-label">UF</label><input id="omega-cad-uf" class="om-input" placeholder="MG" maxlength="2" style="text-transform:uppercase"></div>'
       +'</div>'
 
-      // Drop endereco + campos endereco
       +htmlDrop('omega-drop-endereco','Arraste o Comprovante de Endereco aqui','Opcional — preenche CEP, rua, numero, bairro')
       +'<div id="omega-drop-endereco-status"></div>'
       +'<div class="om-section-title">Endereco</div>'
@@ -69,7 +81,6 @@
         +'<div><label class="om-label">Complemento</label><input id="omega-cad-complemento" class="om-input" placeholder="Apto..."></div>'
       +'</div>'
 
-      // Resumo + Iniciar
       +'<div id="omega-cad-resumo-cpf"></div>'
       +'<button type="button" id="omega-cad-iniciar-cpf" class="om-btn om-btn-green om-btn-full" style="margin-top:4px">&#9654; Iniciar Automacao CPF</button>'
       +'<div id="omega-cad-status-cpf"></div>'
@@ -80,7 +91,6 @@
       +'<button type="button" id="omega-cad-voltar-cnpj" class="om-btn-list" style="color:#5a9cf5;background:none;border:none;padding:2px 0;margin-bottom:8px;font-size:11px;cursor:pointer">&#8592; Voltar</button>'
       +'<div class="om-badge" style="background:linear-gradient(135deg,#6f42c1,#5a35a0)">Cadastro CNPJ</div>'
 
-      // Drop CNPJ + campos endereco/contato
       +htmlDrop('omega-drop-cnpj','Arraste a Inscricao CNPJ / MEI aqui','Preenche endereco, telefone e email')
       +'<div id="omega-drop-cnpj-status"></div>'
       +'<div class="om-section-title">Endereco</div>'
@@ -99,13 +109,11 @@
         +'<div><label class="om-label">Email</label><input id="omega-cad-cnpj-email" class="om-input" placeholder="email@exemplo.com"></div>'
       +'</div>'
 
-      // Drop socio + campo CPF socio
       +htmlDrop('omega-drop-socio','Arraste a CNH do Socio aqui','Opcional — preenche CPF do socio')
       +'<div id="omega-drop-socio-status"></div>'
       +'<div class="om-section-title">Gestor / Socio</div>'
       +'<div class="om-mb-sm"><label class="om-label">CPF do Socio</label><input id="omega-cad-cnpj-cpf-socio" class="om-input" placeholder="00000000000"></div>'
 
-      // Resumo + Iniciar
       +'<div id="omega-cad-resumo-cnpj"></div>'
       +'<button type="button" id="omega-cad-iniciar-cnpj" class="om-btn om-btn-green om-btn-full" style="margin-top:4px">&#9654; Iniciar Automacao CNPJ</button>'
       +'<div id="omega-cad-status-cnpj"></div>'
@@ -126,16 +134,13 @@
     document.getElementById('omega-cad-tipo-btns').style.display='';
     document.getElementById('omega-cad-form-cpf').style.display='none';
     document.getElementById('omega-cad-form-cnpj').style.display='none';
-    // Limpa campos CPF
     ['omega-cad-identidade','omega-cad-uf','omega-cad-cep','omega-cad-logradouro','omega-cad-numero','omega-cad-bairro','omega-cad-complemento'].forEach(function(id){set(id,'');});
-    // Limpa campos CNPJ
     ['omega-cad-cnpj-cep','omega-cad-cnpj-logradouro','omega-cad-cnpj-numero','omega-cad-cnpj-bairro','omega-cad-cnpj-complemento','omega-cad-cnpj-telefone','omega-cad-cnpj-email','omega-cad-cnpj-cpf-socio'].forEach(function(id){set(id,'');});
-    // Limpa status
     ['omega-cad-import-status','omega-drop-cnh-status','omega-drop-endereco-status','omega-drop-cnpj-status','omega-drop-socio-status','omega-cad-status-cpf','omega-cad-status-cnpj'].forEach(function(id){U.clearBox(document.getElementById(id));});
-    // Limpa resumos
     var r1=document.getElementById('omega-cad-resumo-cpf');if(r1)r1.innerHTML='';
     var r2=document.getElementById('omega-cad-resumo-cnpj');if(r2)r2.innerHTML='';
-    // Reset dropzone textos
+    // FIX 6: Reset file inputs para limpar arquivo selecionado
+    ['omega-drop-cnh-file','omega-drop-endereco-file','omega-drop-cnpj-file','omega-drop-socio-file'].forEach(function(id){var fi=document.getElementById(id);if(fi)fi.value='';});
     var resets={'omega-drop-cnh-txt':'Arraste a CNH ou RG aqui<br><span>Preenche identidade e UF automaticamente</span>','omega-drop-endereco-txt':'Arraste o Comprovante de Endereco aqui<br><span>Opcional — preenche CEP, rua, numero, bairro</span>','omega-drop-cnpj-txt':'Arraste a Inscricao CNPJ / MEI aqui<br><span>Preenche endereco, telefone e email</span>','omega-drop-socio-txt':'Arraste a CNH do Socio aqui<br><span>Opcional — preenche CPF do socio</span>'};
     Object.keys(resets).forEach(function(id){var el=document.getElementById(id);if(el)el.innerHTML=resets[id];});
   }
@@ -295,7 +300,6 @@
     var identidade=val('omega-cad-identidade');
     if(!identidade){U.box(st,false,'Preencha o numero da identidade.');return;}
     if(!U.guardClique(this,60000))return false;
-    // Se CEP vazio, aplica aleatorio MG
     if(!val('omega-cad-cep')){
       var cep=U.cepAleatorio('MG').replace(/\D/g,'');
       set('omega-cad-cep',cep);set('omega-cad-logradouro','0');set('omega-cad-numero','0');set('omega-cad-bairro','0');
@@ -314,7 +318,6 @@
   document.getElementById('omega-cad-iniciar-cnpj').addEventListener('click',function(e){
     e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
     var st=document.getElementById('omega-cad-status-cnpj');
-    // Se CEP vazio, aplica aleatorio
     if(!val('omega-cad-cnpj-cep')){
       var cep=U.cepAleatorio('MG').replace(/\D/g,'');
       set('omega-cad-cnpj-cep',cep);set('omega-cad-cnpj-logradouro','0');set('omega-cad-cnpj-numero','0');set('omega-cad-cnpj-bairro','0');
@@ -330,8 +333,13 @@
     var cb=document.getElementById('TransportadorEtc_SituacaoCapacidadeFinanceira');if(cb)U.marcarICheck(cb);
     ST(function(){U.matarTimers();U.box(st,true,'2/6 — Endereco...');
       preencherEnd(cep,logr,num,bairro,compl,st,function(){ST(function(){U.matarTimers();U.box(st,true,'3/6 — Telefone...');
-        addContato('2',tel,function(){ST(function(){U.matarTimers();U.box(st,true,'4/6 — Email...');
-          addContato('4',email,function(){ST(function(){U.matarTimers();U.box(st,true,'5/6 — Gestor...');
+        // FIX 1: verifica resultado do contato antes de prosseguir
+        addContato('2',tel,function(okTel){
+          if(!okTel){pararAutomacao(st,'Erro ao adicionar telefone.');return;}
+          ST(function(){U.matarTimers();U.box(st,true,'4/6 — Email...');
+          addContato('4',email,function(okEmail){
+            if(!okEmail){pararAutomacao(st,'Erro ao adicionar email.');return;}
+            ST(function(){U.matarTimers();U.box(st,true,'5/6 — Gestor...');
             if(socio){addGestor(socio,st,function(){ST(function(){U.matarTimers();U.box(st,true,'6/6 — RT...');addRT(st,function(){window._omegaAutomacaoAtiva=false;U.box(st,true,'Automacao CNPJ concluida!');});},1500);});}
             else{U.box(st,true,'6/6 — RT (sem gestor)...');addRT(st,function(){window._omegaAutomacaoAtiva=false;U.box(st,false,'RT ok. Gestor sem CPF — adicione manualmente.');});}
           },2000);});},2000);});},1500);});},1200);
@@ -353,7 +361,8 @@
     if(!U.guardClique(btn,10000)){cb();return;}btn.click();
     var cf=(cep?cep:U.cepAleatorio('MG')).replace(/\D/g,''),td=!!(cep&&logr&&logr!=='0');
     U.poll(function(){var c=document.getElementById('Cep'),ct=document.getElementById('CodigoTipoEndereco');return(c&&ct&&ct.options.length>1)?{c:c,ct:ct}:null;},function(r){
-      r.ct.value='COR';r.ct.selectedIndex=Array.from(r.ct.options).findIndex(function(o){return o.value==='COR';});jqR(r.ct).trigger('change');
+      // FIX 3: usa selecionarDropdown para CodigoTipoEndereco
+      selecionarDropdown(r.ct,'COR');
       U.poll(function(){var ct=document.getElementById('CodigoTipoEndereco');return ct&&ct.value==='COR';},function(){digCEP(document.getElementById('Cep'),cf,td,logr,num,bairro,compl,st,cb);},
         {maxTentativas:10,intervalo:200,onTimeout:function(){digCEP(document.getElementById('Cep'),cf,td,logr,num,bairro,compl,st,cb);}});
     },{maxTentativas:40,intervalo:200,onTimeout:function(){U.box(st,false,'Modal de endereco nao abriu.');cb();}});
@@ -375,19 +384,34 @@
   function addContato(tv,cv,cb){
     var btn=document.querySelector('button[data-action*="ContatoPedido/Novo"]');if(!btn){cb(false);return;}btn._omegaClicado=false;
     if(!U.guardClique(btn,8000)){cb(false);return;}btn.click();
-    ST(function(){var t=document.getElementById('CodigoTipoContato');if(!t){cb(false);return;}t.value=tv;jqR(t).trigger('change');
-      U.poll(function(){var a=document.getElementById('CodigoTipoContato');return a&&a.value===tv;},function(){ST(function(){var c=document.getElementById('Contato');if(!c){cb(false);return;}
-        U.digitarCharAChar(c,cv,{delay:60,onDone:function(){ST(function(){c=document.getElementById('Contato');if(!c||!c.value||c.value.trim()===''){U.fecharModal();cb(false);return;}
-          var s=document.querySelector('.btn-salvar-contato');if(s&&U.guardClique(s,5000)){s.click();ST(function(){var ma=document.querySelector('.modal.show #manterContatoForm');if(ma){U.fecharModal();cb(false);}else{U.matarTimers();ST(function(){cb(true);},1500);}},1500);}else if(!s)cb(false);},600);}});},400);
+    ST(function(){var t=document.getElementById('CodigoTipoContato');if(!t){cb(false);return;}
+      // FIX: usa selecionarDropdown
+      selecionarDropdown(t,tv);
+      // Polling com re-tentativa de selecao
+      U.poll(function(){
+        var a=document.getElementById('CodigoTipoContato');
+        if(!a||a.value!==tv){if(a)selecionarDropdown(a,tv);return false;}
+        return true;
+      },function(){
+        // FIX 2: re-busca o campo Contato apos confirmar tipo (DOM pode ter sido recriado)
+        ST(function(){var c=document.getElementById('Contato');if(!c){cb(false);return;}
+          U.digitarCharAChar(c,cv,{delay:60,onDone:function(){ST(function(){
+            var cAtual=document.getElementById('Contato'); // re-busca
+            if(!cAtual||!cAtual.value||cAtual.value.trim()===''){U.fecharModal();cb(false);return;}
+            var s=document.querySelector('.btn-salvar-contato');if(s&&U.guardClique(s,5000)){s.click();
+              ST(function(){var ma=document.querySelector('.modal.show #manterContatoForm');if(ma){U.fecharModal();cb(false);}else{U.matarTimers();ST(function(){cb(true);},1500);}},1500);
+            }else if(!s)cb(false);},600);}});},400);
       },{maxTentativas:20,intervalo:300,onTimeout:function(){cb(false);}});},1200);
   }
   function addGestor(cpf,st,cb){
     var fmt=cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4');
     var btn=document.querySelector('button[data-action*="GestorPedido/Novo"]');if(!btn){document.querySelectorAll('button').forEach(function(el){if(!btn&&el.textContent.trim()==='Adicionar Gestor')btn=el;});}
     if(!btn){U.box(st,false,'Botao Gestor nao encontrado.');cb();return;}if(!U.guardClique(btn,10000)){cb();return;}btn.click();
-    U.poll(function(){return document.getElementById('CpfCnpj');},function(){var cf=document.getElementById('CodigoTipoVinculo');if(cf)cf.value='1';
+    U.poll(function(){return document.getElementById('CpfCnpj');},function(){
+      // FIX 4: usa selecionarDropdown para CodigoTipoVinculo
+      var cf=document.getElementById('CodigoTipoVinculo');if(cf)selecionarDropdown(cf,'1');
       U.poll(function(){var c=document.getElementById('CpfCnpj');return c&&!c.disabled&&!c.readOnly?c:null;},function(c){
-        var cf2=document.getElementById('CodigoTipoVinculo');if(cf2&&cf2.value!=='1')cf2.value='1';
+        var cf2=document.getElementById('CodigoTipoVinculo');if(cf2&&cf2.value!=='1')selecionarDropdown(cf2,'1');
         U.digitarCharAChar(c,fmt,{delay:80,onDone:function(){U.poll(function(){var n=document.getElementById('Nome');return n&&n.value&&n.value.trim()!=='';},function(){
           U.matarTimers();U.marcarICheck(document.getElementById('isDeclaracaoIdoneoArtigo2'));
           ST(function(){var bs=document.querySelector('.btn-salvar-gestor');if(bs&&U.guardClique(bs,5000)){bs.removeAttribute('disabled');bs.click();}U.matarTimers();ST(cb,2500);},800);
@@ -426,7 +450,7 @@
     if(!btn)return U.box(st,false,'Botao Endereco nao encontrado.');if(!U.guardClique(btn,10000))return;
     U.box(st,true,'Abrindo formulario...');btn.click();var cn=cep.replace(/\D/g,'');
     U.poll(function(){var c=document.getElementById('Cep'),ct=document.getElementById('CodigoTipoEndereco');return(c&&ct&&ct.options.length>1)?{c:c,ct:ct}:null;},function(r){
-      r.ct.value='COR';r.ct.selectedIndex=Array.from(r.ct.options).findIndex(function(o){return o.value==='COR';});jqR(r.ct).trigger('change');
+      selecionarDropdown(r.ct,'COR');
       U.poll(function(){var ct=document.getElementById('CodigoTipoEndereco');return ct&&ct.value==='COR';},function(){
         U.digitarCharAChar(document.getElementById('Cep'),cn,{delay:80,onDone:function(){var cc=document.getElementById('Cep');
           cc.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,key:'Tab',keyCode:9}));cc.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:'Tab',keyCode:9}));
