@@ -1,4 +1,4 @@
-// pages/arrendamento.js — Cadastrar Contrato de Arrendamento (v58 — tema dark)
+// pages/arrendamento.js — Cadastrar Contrato de Arrendamento (v59 — refatorado antibug)
 (function(){
   var U   = window.OmegaUtils;
   var jq  = window.OmegaJQ;
@@ -153,12 +153,33 @@
     var campoPlaca=document.getElementById('Placa'),campoRenavam=document.getElementById('Renavam');
     if(!campoPlaca||!campoRenavam) return U.box(st,false,'Campos nao encontrados na pagina.');
     U.box(st,true,'Preenchendo...');campoPlaca.removeAttribute('disabled');
+    
     U.digitarCharAChar(campoPlaca,placaVal,{delay:80,delayEspecial:{4:150},onDone:function(){
       var pf=campoPlaca.value;campoRenavam.removeAttribute('disabled');campoRenavam.value=renavamRaw;
-      campoRenavam.dispatchEvent(new Event('input',{bubbles:true}));campoRenavam.dispatchEvent(new Event('change',{bubbles:true}));campoRenavam.dispatchEvent(new Event('blur',{bubbles:true}));
-      ST(function(){var jqRef=unsafeWindow.jQuery;jqRef.ajax({type:'GET',url:'/ContratoArrendamento/verificarVeiculo',cache:false,data:{placa:campoPlaca.value.toUpperCase(),renavam:campoRenavam.value,cpfCnpjProprietario:document.getElementById('CPFCNPJArrendante').value},
-        success:function(resp){if(resp&&resp.success===true){var di=document.getElementById('DataInicio'),df=document.getElementById('DataFim'),ca=document.getElementById('CPFCNPJArrendatario');if(di)di.removeAttribute('disabled');if(df)df.removeAttribute('disabled');if(ca)ca.removeAttribute('disabled');try{if(jqRef('#DataInicio').data('DateTimePicker'))jqRef('#DataInicio').data('DateTimePicker').enable();if(jqRef('#DataFim').data('DateTimePicker'))jqRef('#DataFim').data('DateTimePicker').enable();}catch(e){}jqRef('#DataInicio input,#DataFim input').removeAttr('disabled').removeAttr('readonly');jqRef('#DataInicioIcon,#DataFimIcon').css('pointer-events','auto').css('opacity','1');var sel=document.getElementById('CPFCNPJArrendanteTransportador');if(sel)jqRef(sel).trigger('change');U.box(st,true,'Verificado! Placa <b>'+pf+'</b> OK');}else{U.box(st,false,(resp&&resp.ErrorMessage)?resp.ErrorMessage:'Veiculo nao encontrado.');}},
-        error:function(xhr,status){U.box(st,false,'Erro: '+status);}});},400);
+      campoRenavam.dispatchEvent(new Event('input',{bubbles:true}));
+      campoRenavam.dispatchEvent(new Event('change',{bubbles:true}));
+      campoRenavam.dispatchEvent(new Event('blur',{bubbles:true}));
+      
+      // Dispara o Ajax instantaneamente
+      var jqRef=unsafeWindow.jQuery;
+      jqRef.ajax({
+        type:'GET',url:'/ContratoArrendamento/verificarVeiculo',cache:false,
+        data:{placa:campoPlaca.value.toUpperCase(),renavam:campoRenavam.value,cpfCnpjProprietario:document.getElementById('CPFCNPJArrendante').value},
+        success:function(resp){
+            if(resp&&resp.success===true){
+                var di=document.getElementById('DataInicio'),df=document.getElementById('DataFim'),ca=document.getElementById('CPFCNPJArrendatario');
+                if(di)di.removeAttribute('disabled');if(df)df.removeAttribute('disabled');if(ca)ca.removeAttribute('disabled');
+                try{if(jqRef('#DataInicio').data('DateTimePicker'))jqRef('#DataInicio').data('DateTimePicker').enable();if(jqRef('#DataFim').data('DateTimePicker'))jqRef('#DataFim').data('DateTimePicker').enable();}catch(e){}
+                jqRef('#DataInicio input,#DataFim input').removeAttr('disabled').removeAttr('readonly');
+                jqRef('#DataInicioIcon,#DataFimIcon').css('pointer-events','auto').css('opacity','1');
+                var sel=document.getElementById('CPFCNPJArrendanteTransportador');if(sel)jqRef(sel).trigger('change');
+                U.box(st,true,'Verificado! Placa <b>'+pf+'</b> OK');
+            }else{
+                U.box(st,false,(resp&&resp.ErrorMessage)?resp.ErrorMessage:'Veiculo nao encontrado.');
+            }
+        },
+        error:function(xhr,status){U.box(st,false,'Erro: '+status);}
+      });
     }});
   });
 
@@ -170,11 +191,10 @@
     var di=dd+'/'+mm+'/'+yy,fim=new Date(hj);fim.setFullYear(fim.getFullYear()+1);
     var df=String(fim.getDate()).padStart(2,'0')+'/'+String(fim.getMonth()+1).padStart(2,'0')+'/'+fim.getFullYear();
     U.injetarData('DataInicio',di);U.injetarData('DataFim',df);
-    ST(function(){var vi=jq('#DataInicio').find('input').first().val(),vf=jq('#DataFim').find('input').first().val();
-      if(vi===di&&vf===df)U.box(ds,true,'Datas: <b>'+di+'</b> ate <b>'+df+'</b>');
-      else if(!vi&&!vf)U.box(ds,false,'Clique em Verificar primeiro.');
-      else U.box(ds,false,'Parcial — Inicio: '+(vi||'vazio')+' | Fim: '+(vf||'vazio'));
-    },400);
+    var vi=jq('#DataInicio').find('input').first().val(),vf=jq('#DataFim').find('input').first().val();
+    if(vi===di&&vf===df)U.box(ds,true,'Datas: <b>'+di+'</b> ate <b>'+df+'</b>');
+    else if(!vi&&!vf)U.box(ds,false,'Clique em Verificar primeiro.');
+    else U.box(ds,false,'Parcial — Inicio: '+(vi||'vazio')+' | Fim: '+(vf||'vazio'));
   });
 
   // ── Marcar Declaracoes ───────────────────────────────────────────
@@ -187,7 +207,7 @@
     if(c1.checked&&c2.checked)U.box(st,true,'Declaracoes marcadas!');else U.box(st,false,'Erro ao marcar.');
   });
 
-  // ── Historico ────────────────────────────────────────────────────
+  // ── Historico e Insercao Lógica Nova ─────────────────────────────
   function isPaginaVeiculo(){var mc=document.querySelector('.main_content');if(!mc)return false;var t=mc.getAttribute('data-tipo-pedido')||'';return t==='MovimentacaoFrota'||t==='Cadastro';}
 
   function renderHistorico(){
@@ -213,29 +233,96 @@
     preencherCamposCRLV(item);OmegaAba('crlv');U.box(document.getElementById('omega-extract-status'),true,'Dados importados do historico!');
   };
 
+  // ── LÓGICA DE INSERCAO REFEITA (Sem cascatas de setTimeout) ──────
   unsafeWindow.OmegaInserirVeiculo=function(idx){
     var lista=U.carregarHistorico(),item=lista[idx];if(!item)return;
     var jqRef=unsafeWindow.jQuery||unsafeWindow.$,st=document.getElementById('omega-extract-status');
     var modal=document.getElementById('manterVeiculoModal'),aberto=modal&&(modal.style.display==='block'||modal.classList.contains('show'));
     var tt=modal?modal.querySelector('.modal-title'):null,ehV=tt&&tt.textContent.indexOf('Dados do Ve')!==-1;
+    
     function preencher(){
       var cp=document.getElementById('Placa'),cr=document.getElementById('Renavam'),bv=document.getElementById('verificar');
       if(!cp||!cr){U.box(st,false,'Modal do veiculo nao abriu.');return;}
-      var pv=(item.placa||'').replace(/[^A-Z0-9]/gi,'').toUpperCase();cp.removeAttribute('disabled');
+      var pv=(item.placa||'').replace(/[^A-Z0-9]/gi,'').toUpperCase();
+      cp.removeAttribute('disabled');
+      
       U.digitarCharAChar(cp,pv,{delay:80,delayEspecial:{4:150},onDone:function(){
-        ST(function(){cr.removeAttribute('disabled');cr.value=item.renavam||'';cr.dispatchEvent(new Event('input',{bubbles:true}));cr.dispatchEvent(new Event('change',{bubbles:true}));cr.dispatchEvent(new Event('blur',{bubbles:true}));
-          ST(function(){
-            jqRef.ajax({type:'GET',url:'/Veiculo/BuscarVeiculo',cache:false,data:{placa:cp.value.toUpperCase(),renavam:cr.value},success:function(){ST(function(){if(bv)bv.click();},500);},error:function(){ST(function(){if(bv)bv.click();},500);}});
-            var _jaSalvou=false;function salvar(){if(_jaSalvou)return;_jaSalvou=true;var tara=document.getElementById('Tara');if(tara&&(!tara.value||tara.value==='')){tara.removeAttribute('disabled');tara.value='2';jqRef(tara).trigger('input').trigger('change');}ST(function(){var bs=document.querySelector('.btn-salvar-veiculo');if(bs){bs.removeAttribute('disabled');bs.click();U.box(st,true,'Veiculo salvo! Placa: <b>'+cp.value+'</b>');}else U.box(st,false,'Botao Salvar nao encontrado.');},800);}
-            U.poll(function(){var bb=document.querySelector('.bootbox-confirm button[data-bb-handler="confirm"]');if(bb&&bb.offsetParent!==null)return{tipo:'bootbox',btn:bb};var ch=document.getElementById('Chassi');if(ch&&ch.value&&ch.value.trim()!=='')return{tipo:'chassi'};return null;},
-              function(r){if(r.tipo==='chassi'){salvar();return;}U.box(st,true,'Popup! Confirmando em 3s...');ST(function(){r.btn.click();ST(function(){U.poll(function(){var m2=document.getElementById('manterVeiculoModal'),t2=m2?m2.querySelector('.modal-title'):null;var e=t2&&t2.textContent.indexOf('Movimenta')!==-1,v=m2&&(m2.style.display==='block'||m2.classList.contains('show'));var bx=document.querySelector('.btn-confirmar-exclusao');return(e&&v&&bx)?bx:null;},function(bx){ST(function(){bx.click();ST(function(){var bi=document.querySelector('.btn-confirmar-inclusao');if(bi)bi.click();ST(salvar,1500);},1500);},500);},{maxTentativas:15,intervalo:300,onTimeout:salvar});},1500);},3000);},
-              {maxTentativas:20,intervalo:300,onTimeout:salvar});
-          },400);
-        },300);
+        cr.removeAttribute('disabled');cr.value=item.renavam||'';
+        cr.dispatchEvent(new Event('input',{bubbles:true}));
+        cr.dispatchEvent(new Event('change',{bubbles:true}));
+        cr.dispatchEvent(new Event('blur',{bubbles:true}));
+        
+        U.aguardarElemento('#verificar', function(bv_el){
+            jqRef.ajax({
+                type:'GET',url:'/Veiculo/BuscarVeiculo',cache:false,
+                data:{placa:cp.value.toUpperCase(),renavam:cr.value},
+                success:function(){ bv_el.click(); },
+                error:function(){ bv_el.click(); }
+            });
+            
+            var _jaSalvou=false;
+            function salvar(){
+                if(_jaSalvou)return;_jaSalvou=true;
+                U.aguardarElemento('#Tara', function(tara){
+                    if(!tara.value||tara.value===''){
+                        tara.removeAttribute('disabled');tara.value='2';
+                        jqRef(tara).trigger('input').trigger('change');
+                    }
+                    U.aguardarElemento('.btn-salvar-veiculo', function(bs){
+                        bs.removeAttribute('disabled');bs.click();
+                        U.box(st,true,'Veiculo salvo! Placa: <b>'+cp.value+'</b>');
+                    });
+                });
+            }
+            
+            // Aguarda a tela de Bootbox ou Exclusao ou Carregamento Direto
+            U.aguardarElemento(function(){
+                var bb=document.querySelector('.bootbox-confirm button[data-bb-handler="confirm"]');
+                if(bb&&bb.offsetParent!==null) return {tipo:'bootbox', btn:bb};
+                var bx=document.querySelector('.btn-confirmar-exclusao');
+                if(bx&&bx.offsetParent!==null) return {tipo:'exclusao', btn:bx};
+                var ch=document.getElementById('Chassi');
+                if(ch&&ch.value&&ch.value.trim()!=='') return {tipo:'chassi'};
+                return null;
+            }, function(resultado){
+                if(resultado.tipo==='chassi'){
+                    salvar();
+                } else if(resultado.tipo==='bootbox'){
+                    U.box(st,true,'Confirmando transferencia...');
+                    resultado.btn.click();
+                    U.aguardarElemento(function(){
+                        var bx2=document.querySelector('.btn-confirmar-exclusao');
+                        if(bx2&&bx2.offsetParent!==null) return {tipo:'exclusao', btn:bx2};
+                        var bs2=document.querySelector('.btn-salvar-veiculo');
+                        if(bs2&&!bs2.disabled) return {tipo:'salvar'};
+                        return null;
+                    }, function(res2){
+                        if(res2.tipo==='exclusao'){
+                            res2.btn.click();
+                            U.aguardarElemento('.btn-confirmar-inclusao', function(bi){ bi.click(); salvar(); });
+                        } else {
+                            salvar();
+                        }
+                    });
+                } else if(resultado.tipo==='exclusao'){
+                    resultado.btn.click();
+                    U.aguardarElemento('.btn-confirmar-inclusao', function(bi){ bi.click(); salvar(); });
+                }
+            });
+        });
       }});
     }
-    if(aberto&&ehV){U.box(st,true,'Preenchendo veiculo...');preencher();}
-    else{var ba=document.querySelector('[data-action*="VeiculoPedido/Novo"]');if(!ba){U.box(st,false,'Botao nao encontrado.');return;}U.box(st,true,'Abrindo popup...');ba.click();ST(preencher,1500);}
+    
+    if(aberto&&ehV){
+        U.box(st,true,'Preenchendo veiculo...');
+        preencher();
+    } else {
+        var ba=document.querySelector('[data-action*="VeiculoPedido/Novo"]');
+        if(!ba){U.box(st,false,'Botao nao encontrado.');return;}
+        U.box(st,true,'Abrindo popup...');
+        ba.click();
+        U.aguardarElemento('#manterVeiculoModal .modal-title', function() { preencher(); });
+    }
   };
 
   // ── Importacao manual ────────────────────────────────────────────
