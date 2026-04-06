@@ -1,4 +1,4 @@
-// pages/arrendamento.js — Cadastrar Contrato de Arrendamento (v59 — refatorado antibug)
+// pages/arrendamento.js — Cadastrar Contrato de Arrendamento (v60 — com salvar manual)
 (function(){
   var U   = window.OmegaUtils;
   var jq  = window.OmegaJQ;
@@ -36,6 +36,7 @@
       +'<div>'
         +'<label class="om-label">Renavam</label>'
         +'<input id="antt-renavam-input" class="om-input" placeholder="00000000000" maxlength="15">'
+        +'<button id="antt-salvar-manual-btn" class="om-btn om-btn-green" style="margin-top: 8px; width: 100%; display: block; box-sizing: border-box;" type="button">💾 Salvar no Histórico</button>'
       +'</div>'
     +'</div>'
     +'<div class="om-grid om-grid-2 om-mb-sm">'
@@ -114,6 +115,28 @@
     else p.textContent='';
   });
 
+  // ── Salvar Manual no Histórico ───────────────────────────────────
+  document.getElementById('antt-salvar-manual-btn').addEventListener('click', function(){
+    var placa = document.getElementById('antt-placa-input').value.trim().toUpperCase();
+    var renavam = document.getElementById('antt-renavam-input').value.trim();
+
+    if(placa.length >= 7 && renavam.length >= 9) {
+        // Aproveitando a própria função do seu OmegaUtils!
+        U.adicionarHistorico({ placa: placa, renavam: renavam });
+        
+        var btn = this;
+        var textoOriginal = btn.innerHTML;
+        btn.innerHTML = '✅ Salvo!';
+        btn.style.backgroundColor = '#2E7D32';
+        setTimeout(function(){
+            btn.innerHTML = textoOriginal;
+            btn.style.backgroundColor = ''; // Remove o inline pra voltar a cor original da classe
+        }, 2000);
+    } else {
+        alert('❌ Por favor, preencha a Placa e o Renavam corretamente antes de salvar.');
+    }
+  });
+
   // ── Substituir CPF + Nome ────────────────────────────────────────
   document.getElementById('antt-btn').addEventListener('click', function(){
     var st=document.getElementById('antt-status');
@@ -169,185 +192,4 @@
             if(resp&&resp.success===true){
                 var di=document.getElementById('DataInicio'),df=document.getElementById('DataFim'),ca=document.getElementById('CPFCNPJArrendatario');
                 if(di)di.removeAttribute('disabled');if(df)df.removeAttribute('disabled');if(ca)ca.removeAttribute('disabled');
-                try{if(jqRef('#DataInicio').data('DateTimePicker'))jqRef('#DataInicio').data('DateTimePicker').enable();if(jqRef('#DataFim').data('DateTimePicker'))jqRef('#DataFim').data('DateTimePicker').enable();}catch(e){}
-                jqRef('#DataInicio input,#DataFim input').removeAttr('disabled').removeAttr('readonly');
-                jqRef('#DataInicioIcon,#DataFimIcon').css('pointer-events','auto').css('opacity','1');
-                var sel=document.getElementById('CPFCNPJArrendanteTransportador');if(sel)jqRef(sel).trigger('change');
-                U.box(st,true,'Verificado! Placa <b>'+pf+'</b> OK');
-            }else{
-                U.box(st,false,(resp&&resp.ErrorMessage)?resp.ErrorMessage:'Veiculo nao encontrado.');
-            }
-        },
-        error:function(xhr,status){U.box(st,false,'Erro: '+status);}
-      });
-    }});
-  });
-
-  // ── Preencher Data ───────────────────────────────────────────────
-  document.getElementById('antt-data-btn').addEventListener('click', function(){
-    var ds=document.getElementById('antt-data-status');
-    if(!jq||!mom)return U.box(ds,false,'jQuery ou moment nao encontrados.');
-    var hj=new Date(),dd=String(hj.getDate()).padStart(2,'0'),mm=String(hj.getMonth()+1).padStart(2,'0'),yy=hj.getFullYear();
-    var di=dd+'/'+mm+'/'+yy,fim=new Date(hj);fim.setFullYear(fim.getFullYear()+1);
-    var df=String(fim.getDate()).padStart(2,'0')+'/'+String(fim.getMonth()+1).padStart(2,'0')+'/'+fim.getFullYear();
-    U.injetarData('DataInicio',di);U.injetarData('DataFim',df);
-    var vi=jq('#DataInicio').find('input').first().val(),vf=jq('#DataFim').find('input').first().val();
-    if(vi===di&&vf===df)U.box(ds,true,'Datas: <b>'+di+'</b> ate <b>'+df+'</b>');
-    else if(!vi&&!vf)U.box(ds,false,'Clique em Verificar primeiro.');
-    else U.box(ds,false,'Parcial — Inicio: '+(vi||'vazio')+' | Fim: '+(vf||'vazio'));
-  });
-
-  // ── Marcar Declaracoes ───────────────────────────────────────────
-  document.getElementById('antt-check-btn').addEventListener('click', function(){
-    var st=document.getElementById('antt-check-status');
-    var c1=document.getElementById('ExisteContrato'),c2=document.getElementById('InformacoesVerdadeiras');
-    if(!c1||!c2)return U.box(st,false,'Checkboxes nao encontrados.');
-    function marcar(cb){cb.checked=true;cb.dispatchEvent(new Event('change',{bubbles:true}));cb.dispatchEvent(new Event('click',{bubbles:true}));}
-    marcar(c1);marcar(c2);
-    if(c1.checked&&c2.checked)U.box(st,true,'Declaracoes marcadas!');else U.box(st,false,'Erro ao marcar.');
-  });
-
-  // ── Historico e Insercao Lógica Nova ─────────────────────────────
-  function isPaginaVeiculo(){var mc=document.querySelector('.main_content');if(!mc)return false;var t=mc.getAttribute('data-tipo-pedido')||'';return t==='MovimentacaoFrota'||t==='Cadastro';}
-
-  function renderHistorico(){
-    var lista=U.carregarHistorico(),el=document.getElementById('omega-historico-lista'),vazio=document.getElementById('omega-historico-vazio');
-    if(!el)return;
-    if(lista.length===0){el.innerHTML='';if(vazio)vazio.style.display='block';return;}
-    if(vazio)vazio.style.display='none';
-    var ehPV=isPaginaVeiculo();
-    el.innerHTML=lista.map(function(item,idx){
-      var tempo=U.tempoRelativo(item.ts);
-      var botoes='<div style="display:flex;gap:4px">'
-        +'<button onclick="OmegaImportarHistorico('+idx+')" class="om-btn om-btn-blue om-btn-sm">Usar</button>';
-      if(ehPV) botoes+='<button onclick="OmegaInserirVeiculo('+idx+')" class="om-btn om-btn-green om-btn-sm">Veiculo</button>';
-      botoes+='<button onclick="OmegaRemoverHistorico('+idx+')" class="om-btn-list om-btn-del">x</button></div>';
-      return '<div class="om-hist-item"><div><div class="om-hist-placa">'+U.formatarPlaca(item.placa)+'</div><div class="om-hist-tempo">'+tempo+'</div></div>'+botoes+'</div>';
-    }).join('');
-  }
-
-  unsafeWindow.OmegaRemoverHistorico=function(idx){var lista=U.carregarHistorico();lista.splice(idx,1);U.salvarHistorico(lista);renderHistorico();};
-
-  unsafeWindow.OmegaImportarHistorico=function(idx){
-    var lista=U.carregarHistorico(),item=lista[idx];if(!item)return;
-    preencherCamposCRLV(item);OmegaAba('crlv');U.box(document.getElementById('omega-extract-status'),true,'Dados importados do historico!');
-  };
-
-  // ── LÓGICA DE INSERCAO REFEITA (Sem cascatas de setTimeout) ──────
-  unsafeWindow.OmegaInserirVeiculo=function(idx){
-    var lista=U.carregarHistorico(),item=lista[idx];if(!item)return;
-    var jqRef=unsafeWindow.jQuery||unsafeWindow.$,st=document.getElementById('omega-extract-status');
-    var modal=document.getElementById('manterVeiculoModal'),aberto=modal&&(modal.style.display==='block'||modal.classList.contains('show'));
-    var tt=modal?modal.querySelector('.modal-title'):null,ehV=tt&&tt.textContent.indexOf('Dados do Ve')!==-1;
-    
-    function preencher(){
-      var cp=document.getElementById('Placa'),cr=document.getElementById('Renavam'),bv=document.getElementById('verificar');
-      if(!cp||!cr){U.box(st,false,'Modal do veiculo nao abriu.');return;}
-      var pv=(item.placa||'').replace(/[^A-Z0-9]/gi,'').toUpperCase();
-      cp.removeAttribute('disabled');
-      
-      U.digitarCharAChar(cp,pv,{delay:80,delayEspecial:{4:150},onDone:function(){
-        cr.removeAttribute('disabled');cr.value=item.renavam||'';
-        cr.dispatchEvent(new Event('input',{bubbles:true}));
-        cr.dispatchEvent(new Event('change',{bubbles:true}));
-        cr.dispatchEvent(new Event('blur',{bubbles:true}));
-        
-        U.aguardarElemento('#verificar', function(bv_el){
-            jqRef.ajax({
-                type:'GET',url:'/Veiculo/BuscarVeiculo',cache:false,
-                data:{placa:cp.value.toUpperCase(),renavam:cr.value},
-                success:function(){ bv_el.click(); },
-                error:function(){ bv_el.click(); }
-            });
-            
-            var _jaSalvou=false;
-            function salvar(){
-                if(_jaSalvou)return;_jaSalvou=true;
-                U.aguardarElemento('#Tara', function(tara){
-                    if(!tara.value||tara.value===''){
-                        tara.removeAttribute('disabled');tara.value='2';
-                        jqRef(tara).trigger('input').trigger('change');
-                    }
-                    U.aguardarElemento('.btn-salvar-veiculo', function(bs){
-                        bs.removeAttribute('disabled');bs.click();
-                        U.box(st,true,'Veiculo salvo! Placa: <b>'+cp.value+'</b>');
-                    });
-                });
-            }
-            
-            // Aguarda a tela de Bootbox ou Exclusao ou Carregamento Direto
-            U.aguardarElemento(function(){
-                var bb=document.querySelector('.bootbox-confirm button[data-bb-handler="confirm"]');
-                if(bb&&bb.offsetParent!==null) return {tipo:'bootbox', btn:bb};
-                var bx=document.querySelector('.btn-confirmar-exclusao');
-                if(bx&&bx.offsetParent!==null) return {tipo:'exclusao', btn:bx};
-                var ch=document.getElementById('Chassi');
-                if(ch&&ch.value&&ch.value.trim()!=='') return {tipo:'chassi'};
-                return null;
-            }, function(resultado){
-                if(resultado.tipo==='chassi'){
-                    salvar();
-                } else if(resultado.tipo==='bootbox'){
-                    U.box(st,true,'Confirmando transferencia...');
-                    resultado.btn.click();
-                    U.aguardarElemento(function(){
-                        var bx2=document.querySelector('.btn-confirmar-exclusao');
-                        if(bx2&&bx2.offsetParent!==null) return {tipo:'exclusao', btn:bx2};
-                        var bs2=document.querySelector('.btn-salvar-veiculo');
-                        if(bs2&&!bs2.disabled) return {tipo:'salvar'};
-                        return null;
-                    }, function(res2){
-                        if(res2.tipo==='exclusao'){
-                            res2.btn.click();
-                            U.aguardarElemento('.btn-confirmar-inclusao', function(bi){ bi.click(); salvar(); });
-                        } else {
-                            salvar();
-                        }
-                    });
-                } else if(resultado.tipo==='exclusao'){
-                    resultado.btn.click();
-                    U.aguardarElemento('.btn-confirmar-inclusao', function(bi){ bi.click(); salvar(); });
-                }
-            });
-        });
-      }});
-    }
-    
-    if(aberto&&ehV){
-        U.box(st,true,'Preenchendo veiculo...');
-        preencher();
-    } else {
-        var ba=document.querySelector('[data-action*="VeiculoPedido/Novo"]');
-        if(!ba){U.box(st,false,'Botao nao encontrado.');return;}
-        U.box(st,true,'Abrindo popup...');
-        ba.click();
-        U.aguardarElemento('#manterVeiculoModal .modal-title', function() { preencher(); });
-    }
-  };
-
-  // ── Importacao manual ────────────────────────────────────────────
-  document.getElementById('omega-import-btn').addEventListener('click', function(){
-    var codigo=document.getElementById('omega-import-input').value.trim(),exSt=document.getElementById('omega-extract-status');
-    if(!codigo)return U.box(exSt,false,'Cole o codigo de importacao.');
-    var dados=U.parseCodigo(codigo);if(!dados.placa&&!dados.renavam)return U.box(exSt,false,'Codigo invalido.');
-    preencherCamposCRLV(dados);U.adicionarHistorico(dados);document.getElementById('omega-import-input').value='';
-    U.box(exSt,true,'Dados importados! Revise e clique nos botoes.');
-  });
-
-// ── Roteamento Inteligente ───────────────────────────────────────
-  // Força a aba CRLV a abrir automaticamente se estiver na URL de Criar Arrendamento
-  if (window.location.href.indexOf('ContratoArrendamento/Criar') !== -1) {
-      setTimeout(function() {
-          if (typeof unsafeWindow !== 'undefined' && unsafeWindow.OmegaAba) {
-              unsafeWindow.OmegaAba('crlv');
-          } else if (typeof OmegaAba === 'function') {
-              OmegaAba('crlv');
-          }
-          var cpfInput = document.getElementById('antt-cpf-input');
-          if (cpfInput) cpfInput.focus();
-      }, 300); // Aguarda a renderização do core.js
-  } else {
-      var cpfInput = document.getElementById('antt-cpf-input');
-      if (cpfInput) cpfInput.focus();
-  }
-})();
+                try{if(jqRef('#DataInicio').data('DateTimePicker'))jqRef('#DataInicio').data('DateTimePicker').enable();if(jqRef('#DataFim').data('DateTimePicker'))jqRef('#DataFim').data('DateTimePicker').enable();}catch(
