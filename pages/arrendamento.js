@@ -334,5 +334,20 @@
     U.box(exSt,true,'Dados importados! Revise e clique nos botoes.');
   });
 
-  document.getElementById('antt-cpf-input').focus();
+// ── Roteamento Inteligente ───────────────────────────────────────
+  // Força a aba CRLV a abrir automaticamente se estiver na URL de Criar Arrendamento
+  if (window.location.href.indexOf('ContratoArrendamento/Criar') !== -1) {
+      setTimeout(function() {
+          if (typeof unsafeWindow !== 'undefined' && unsafeWindow.OmegaAba) {
+              unsafeWindow.OmegaAba('crlv');
+          } else if (typeof OmegaAba === 'function') {
+              OmegaAba('crlv');
+          }
+          var cpfInput = document.getElementById('antt-cpf-input');
+          if (cpfInput) cpfInput.focus();
+      }, 300); // Aguarda a renderização do core.js
+  } else {
+      var cpfInput = document.getElementById('antt-cpf-input');
+      if (cpfInput) cpfInput.focus();
+  }
 })();
